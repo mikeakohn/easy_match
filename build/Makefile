@@ -1,9 +1,13 @@
 
-CFLAGS=-Wall -O3 -g
+#CFLAGS=-Wall -O3 -g
+VPATH=../src
 
-default:
-	gcc -c tokens.c $(CFLAGS)
-	gcc -o test test.c tokens.o $(CFLAGS)
+OBJECTS=tokens.o
+
+default: $(OBJECTS)
+
+%.o: %.c %.h
+	$(CC) -c $< -o $*.o $(CFLAGS)
 
 clean:
 	@rm -f *.o
