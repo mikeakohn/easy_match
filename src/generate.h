@@ -12,8 +12,12 @@
 #ifndef _GENERATE_H
 #define _GENERATE_H
 
+#include <stdint.h>
+
 struct _generate
 {
+  uint8_t *code;
+  int ptr;
   int reg;
 };
 

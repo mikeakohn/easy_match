@@ -5,6 +5,8 @@ CC=gcc
 
 default:
 	@+make -C build
+
+test_tokens:
 	gcc -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
 
 clean:

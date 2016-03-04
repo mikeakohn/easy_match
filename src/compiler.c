@@ -12,8 +12,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "compiler.h"
+#include "generate.h"
 #include "tokens.h"
 
 #define MAX_CODE_SIZE 4096
@@ -22,10 +24,12 @@ match_t compiler_generate(char *code)
 {
   match_t match;
   struct _tokens tokens;
+  struct _generate *generate;
+  int token_type;
 
   match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
 
-  tokens_init(&tokens, argv[1]);
+  tokens_init(&tokens, code);
 
   while(1)
   {
@@ -41,8 +45,8 @@ match_t compiler_generate(char *code)
   return NULL;
 }
 
-void compiler_free(match_t function);
+void compiler_free(match_t function)
 {
-  munmap(match, MAX_CODE_SIZE);
+  munmap(function, MAX_CODE_SIZE);
 }
 

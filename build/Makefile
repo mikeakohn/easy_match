@@ -2,9 +2,10 @@
 #CFLAGS=-Wall -O3 -g
 VPATH=../src
 
-OBJECTS=tokens.o
+OBJECTS=tokens.o compiler.o generate_linux_x86_64.o
 
 default: $(OBJECTS)
+	gcc -o ../easy_match ../tests/easy_match.c $(OBJECTS) -I../src $(CFLAGS)
 
 %.o: %.c %.h
 	$(CC) -c $< -o $*.o $(CFLAGS)

@@ -9,6 +9,8 @@
  *
  */
 
+#include "generate.h"
+
 int generate_init(struct _generate *generate)
 {
   return 0;
