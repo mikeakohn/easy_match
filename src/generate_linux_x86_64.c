@@ -9,6 +9,8 @@
  *
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "generate.h"
@@ -99,8 +101,7 @@ int generate_startswith(struct _generate *generate, char *match)
 
       if (n == 0)
       {
-        // mov rdx, [edi]:  0x67  0x48  0x8B  0x17
-        generate->code[generate->ptr++] = 0x67;
+        // mov rdx, [rdi]:  0x48  0x8B  0x17
         generate->code[generate->ptr++] = 0x48;
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x17;
@@ -108,8 +109,7 @@ int generate_startswith(struct _generate *generate, char *match)
         else
       if (n < 128)
       {
-        // mov rdx, [edi+10]:  0x67  0x48  0x8B  0x57  0x0A
-        generate->code[generate->ptr++] = 0x67;
+        // mov rdx, [rdi+1]:  0x48  0x8B  0x57  0x01
         generate->code[generate->ptr++] = 0x48;
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x57;
@@ -117,8 +117,7 @@ int generate_startswith(struct _generate *generate, char *match)
       }
         else
       {
-        // mov rdx, [edi+128]:  0x67  0x48  0x8B  0x97  0x80  0x00  0x00  0x00
-        generate->code[generate->ptr++] = 0x67;
+        // mov rdx, [rdi+128]:  0x48  0x8B  0x97  0x80  0x00  0x00  0x00
         generate->code[generate->ptr++] = 0x48;
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x97;
@@ -147,24 +146,21 @@ int generate_startswith(struct _generate *generate, char *match)
 
       if (n == 0)
       {
-        // mov edx, [edi]:  0x67  0x8B  0x17
-        generate->code[generate->ptr++] = 0x67;
+        // mov edx, [rdi]:  0x8B  0x17
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x17;
       }
         else
       if (n < 128)
       {
-        // mov edx, [edi+1]:  0x67  0x8B  0x57  0x01
-        generate->code[generate->ptr++] = 0x67;
+        // mov edx, [rdi+1]:  0x8B  0x57  0x01
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x57;
         generate->code[generate->ptr++] = n;
       }
         else
       {
-        // mov edx, [edi+128]:  0x67  0x8B  0x97  0x80  0x00  0x00  0x00
-        generate->code[generate->ptr++] = 0x67;
+        // mov edx, [rdi+128]:  0x8B  0x97  0x80  0x00  0x00  0x00
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x97;
         generate->code[generate->ptr++] = n & 0xff;
@@ -190,27 +186,24 @@ int generate_startswith(struct _generate *generate, char *match)
 
       if (n == 0)
       {
-        // mov dx, [edi]:  0x66  0x67  0x8B  0x17
+        // mov dx, [rdi]:  0x66  0x8B  0x17
         generate->code[generate->ptr++] = 0x66;
-        generate->code[generate->ptr++] = 0x67;
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x17;
       }
         else
       if (n < 128)
       {
-        // mov dx, [edi+1]:  0x66  0x67  0x8B  0x57  0x01
+        // mov dx, [rdi+1]:  0x66  0x8B  0x57  0x01
         generate->code[generate->ptr++] = 0x66;
-        generate->code[generate->ptr++] = 0x67;
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x57;
         generate->code[generate->ptr++] = n;
       }
         else
       {
-        // mov dx, [edi+128]:  0x66  0x67  0x8B  0x97  0x80  0x00  0x00  0x00
+        // mov dx, [rdi+128]:  0x66  0x8B  0x97  0x80  0x00  0x00  0x00
         generate->code[generate->ptr++] = 0x66;
-        generate->code[generate->ptr++] = 0x67;
         generate->code[generate->ptr++] = 0x8b;
         generate->code[generate->ptr++] = 0x97;
         generate->code[generate->ptr++] = n & 0xff;
@@ -292,15 +285,25 @@ int generate_contains(struct _generate *generate, char *match)
 
 int generate_finish(struct _generate *generate)
 {
+#if 0
   // mov eax, 1: 0xB8  0x01  0x00  0x00  0x00
   generate->code[generate->ptr++] = 0xb8;
   generate->code[generate->ptr++] = 0x01;
   generate->code[generate->ptr++] = 0x00;
   generate->code[generate->ptr++] = 0x00;
   generate->code[generate->ptr++] = 0x00;
+#endif
+
+  // inc eax:  0xFF  0xC0
+  generate->code[generate->ptr++] = 0xff;
+  generate->code[generate->ptr++] = 0xc0;
 
   // ret: 0xc3
   generate->code[generate->ptr++] = 0xc3;
+
+  FILE *out = fopen("/tmp/debug.bin", "wb");
+  fwrite(generate->code, 1, generate->ptr, out);
+  fclose(out);
 
   return 0;
 }
