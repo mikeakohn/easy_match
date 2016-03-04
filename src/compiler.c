@@ -9,22 +9,21 @@
  *
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "compiler.h"
 #include "tokens.h"
 
-int main(int argc, char *argv[])
+#define MAX_CODE_SIZE 4096
+
+match_t compiler_generate(char *code)
 {
-  int token_type;
+  match_t match;
   struct _tokens tokens;
 
-  if (argc != 2)
-  {
-    printf("Usage: test <string>\n");
-    exit(0);
-  }
+  match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
 
   tokens_init(&tokens, argv[1]);
 
@@ -39,6 +38,11 @@ int main(int argc, char *argv[])
 
   tokens_free(&tokens);
 
-  return 0;
+  return NULL;
+}
+
+void compiler_free(match_t function);
+{
+  munmap(match, MAX_CODE_SIZE);
 }
 

@@ -19,8 +19,6 @@ void tokens_init(struct _tokens *tokens, char *code)
 {
   tokens->code = code;
   tokens->next = malloc(strlen(code) + 1);
-  //tokens->ptr = 0;
-  //tokens->old = 0;
 }
 
 int tokens_next(struct _tokens *tokens)
@@ -57,6 +55,8 @@ int tokens_next(struct _tokens *tokens)
       break;
     }
 
+    // If there is no parenthesis then this must be either a quote or
+    // keyword (or possibly an illegal character).
     if (*code == '\'')
     {
       token_type = TOKEN_STRING;
@@ -69,6 +69,7 @@ int tokens_next(struct _tokens *tokens)
 
     while(1)
     {
+      // This is a keyword and the next character is not a letter so stop.
       if (token_type == TOKEN_KEYWORD)
       {
         if (!((*code >= 'a' && *code <= 'z') ||
@@ -78,14 +79,17 @@ int tokens_next(struct _tokens *tokens)
         }
       }
 
+      // This is a string and there is a closing quote, so stop.
       if (*code == '\'' && token_type == TOKEN_STRING)
       {
         code++;
         break;
       }
 
+      // Did't get a closing quote so throw an error.
       if (*code == 0 && token_type == TOKEN_STRING)
       {
+        tokens->next[0] = 0;
         return TOKEN_ERROR;
       }
 
@@ -95,6 +99,14 @@ int tokens_next(struct _tokens *tokens)
     }
  
   } while(0);
+
+  // The length of the token is 0 which means an illegal character was
+  // was found.  Throw an error.
+  if (ptr == 0)
+  {
+    tokens->next[0] = 0;
+    return TOKEN_ERROR;
+  }
 
   tokens->next[ptr] = 0;
   tokens->code = code;
