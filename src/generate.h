@@ -21,8 +21,8 @@ struct _generate
   int reg;
 };
 
-int generate_init(struct _generate *generate);
-int generate_not(struct _generate *generate, char *match);
+int generate_init(struct _generate *generate, uint8_t *code);
+int generate_not(struct _generate *generate);
 int generate_startswith(struct _generate *generate, char *match);
 int generate_endswith(struct _generate *generate, char *match);
 int generate_equals(struct _generate *generate, char *match);

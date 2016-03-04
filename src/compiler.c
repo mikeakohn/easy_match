@@ -20,15 +20,50 @@
 
 #define MAX_CODE_SIZE 4096
 
+#define GENERATE(command) \
+  token_type = tokens_next(&tokens); \
+  if (token_type != TOKEN_PAREN_OPEN) \
+  { \
+    error = 1; \
+    break; \
+  } \
+ \
+  token_type = tokens_next(&tokens); \
+  if (generate_##command(&generate, tokens.next) != 0) \
+  { \
+    error = 1; \
+    break; \
+  } \
+ \
+  token_type = tokens_next(&tokens); \
+  if (token_type != TOKEN_PAREN_CLOSE) \
+  { \
+    error = 1; \
+    break; \
+  } \
+ \
+  if (not == 1) \
+  { \
+    if (generate_not(&generate) != 0) \
+    { \
+      error = 1; \
+      break; \
+    } \
+    not = 0; \
+  }
+
 match_t compiler_generate(char *code)
 {
   match_t match;
   struct _tokens tokens;
-  struct _generate *generate;
+  struct _generate generate;
   int token_type;
+  int error = 0;
+  int not = 0;
 
   match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
 
+  generate_init(&generate, (uint8_t *)match);
   tokens_init(&tokens, code);
 
   while(1)
@@ -36,17 +71,54 @@ match_t compiler_generate(char *code)
     token_type = tokens_next(&tokens);
     if (token_type == TOKEN_EOF) { break; }
 
-    printf("%d) %s\n", token_type, tokens.next);
+    if (strcmp(tokens.next, "not") == 0)
+    {
+      not = 1;
+    }
+      else
+    if (strcmp(tokens.next, "startswith") == 0)
+    {
+      GENERATE(startswith);
+    }
+      else
+    if (strcmp(tokens.next, "endswith") == 0)
+    {
+      GENERATE(endswith);
+    }
+      else
+    if (strcmp(tokens.next, "equals") == 0)
+    {
+      GENERATE(endswith);
+    }
+      else
+    if (strcmp(tokens.next, "contains") == 0)
+    {
+      GENERATE(endswith);
+    }
+      else
+    {
+      error = 1;
+      break;
+    }
+
+    //printf("%d) %s\n", token_type, tokens.next);
     if (token_type == TOKEN_ERROR) { break; }
   }
 
+  generate_finish(&generate);
   tokens_free(&tokens);
 
-  return NULL;
+  if (error == 1)
+  {
+    compiler_free(match);
+    match = NULL;
+  }
+
+  return match;
 }
 
-void compiler_free(match_t function)
+void compiler_free(match_t match)
 {
-  munmap(function, MAX_CODE_SIZE);
+  munmap(match, MAX_CODE_SIZE);
 }
 

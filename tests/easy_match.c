@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
       if (match(line) == 1) { printf("%s\n", line); }
       if (ch == EOF) { break; }
       ptr = 0;
+      continue;
     }
 
     line[ptr++] = ch;

@@ -1,5 +1,5 @@
 
-#CFLAGS=-Wall -O3 -g
+CFLAGS=-Wall -O3 -g
 VPATH=../src
 
 OBJECTS=tokens.o compiler.o generate_linux_x86_64.o

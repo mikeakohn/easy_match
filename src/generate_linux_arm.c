@@ -11,39 +11,39 @@
 
 #include "generate.h"
 
-int generate_init(struct _generate *generate)
+int generate_init(struct _generate *generate, uint8_t *code)
 {
-  return 0;
+  return -1;
 }
 
-int generate_not(struct _generate *generate, char *match)
+int generate_not(struct _generate *generate)
 {
-  return 0;
+  return -1;
 }
 
 int generate_startswith(struct _generate *generate, char *match)
 {
-  return 0;
+  return -1;
 }
 
 int generate_endswith(struct _generate *generate, char *match)
 {
-  return 0;
+  return -1;
 }
 
 int generate_equals(struct _generate *generate, char *match)
 {
-  return 0;
+  return -1;
 }
 
 int generate_contains(struct _generate *generate, char *match)
 {
-  return 0;
+  return -1;
 }
 
 int generate_finish(struct _generate *generate)
 {
-  return 0;
+  return -1;
 }
 
 
