@@ -76,8 +76,201 @@ int generate_not(struct _generate *generate)
 int generate_startswith(struct _generate *generate, char *match)
 {
   int len = strlen(match);
+  int n;
 
   generate_strlen(generate, len);
+
+  n = 0;
+  while (n < len)
+  {
+    if ((len - n) >= 8)
+    {
+      // mov rbx, 0x8877665544332211:  0x48  0xBB  0x11 
+      generate->code[generate->ptr++] = 0x48;
+      generate->code[generate->ptr++] = 0xbb;
+      generate->code[generate->ptr++] = match[n+0];
+      generate->code[generate->ptr++] = match[n+1];
+      generate->code[generate->ptr++] = match[n+2];
+      generate->code[generate->ptr++] = match[n+3];
+      generate->code[generate->ptr++] = match[n+4];
+      generate->code[generate->ptr++] = match[n+5];
+      generate->code[generate->ptr++] = match[n+6];
+      generate->code[generate->ptr++] = match[n+7];
+
+      if (n == 0)
+      {
+        // mov rdx, [edi]:  0x67  0x48  0x8B  0x17
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x48;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x17;
+      }
+        else
+      if (n < 128)
+      {
+        // mov rdx, [edi+10]:  0x67  0x48  0x8B  0x57  0x0A
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x48;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x57;
+        generate->code[generate->ptr++] = n;
+      }
+        else
+      {
+        // mov rdx, [edi+128]:  0x67  0x48  0x8B  0x97  0x80  0x00  0x00  0x00
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x48;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x97;
+        generate->code[generate->ptr++] = n & 0xff;
+        generate->code[generate->ptr++] = (n >> 8) & 0xff;
+        generate->code[generate->ptr++] = (n >> 16) & 0xff;
+        generate->code[generate->ptr++] = (n >> 24) & 0xff;
+      }
+
+      // cmp rdx, rbx:  0x48  0x39  0xDA
+      generate->code[generate->ptr++] = 0x48;
+      generate->code[generate->ptr++] = 0x39;
+      generate->code[generate->ptr++] = 0xda;
+
+      n += 8;
+    }
+      else
+    if ((len - n) >= 4)
+    {
+      // mov ebx, 0x12345678:  0xBB  0x78  0x56  0x34  0x12
+      generate->code[generate->ptr++] = 0xbb;
+      generate->code[generate->ptr++] = match[n+0];
+      generate->code[generate->ptr++] = match[n+1];
+      generate->code[generate->ptr++] = match[n+2];
+      generate->code[generate->ptr++] = match[n+3];
+
+      if (n == 0)
+      {
+        // mov edx, [edi]:  0x67  0x8B  0x17
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x17;
+      }
+        else
+      if (n < 128)
+      {
+        // mov edx, [edi+1]:  0x67  0x8B  0x57  0x01
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x57;
+        generate->code[generate->ptr++] = n;
+      }
+        else
+      {
+        // mov edx, [edi+128]:  0x67  0x8B  0x97  0x80  0x00  0x00  0x00
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x97;
+        generate->code[generate->ptr++] = n & 0xff;
+        generate->code[generate->ptr++] = (n >> 8) & 0xff;
+        generate->code[generate->ptr++] = (n >> 16) & 0xff;
+        generate->code[generate->ptr++] = (n >> 24) & 0xff;
+      }
+
+      // cmp edx, ebx:  0x39  0xDA
+      generate->code[generate->ptr++] = 0x39;
+      generate->code[generate->ptr++] = 0xda;
+
+      n += 4;
+    }
+      else
+    if ((len - n) >= 2)
+    {
+      // mov bx, 0x1234:  0x66  0xBB  0x34  0x12
+      generate->code[generate->ptr++] = 0x66;
+      generate->code[generate->ptr++] = 0xbb;
+      generate->code[generate->ptr++] = match[n+0];
+      generate->code[generate->ptr++] = match[n+1];
+
+      if (n == 0)
+      {
+        // mov dx, [edi]:  0x66  0x67  0x8B  0x17
+        generate->code[generate->ptr++] = 0x66;
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x17;
+      }
+        else
+      if (n < 128)
+      {
+        // mov dx, [edi+1]:  0x66  0x67  0x8B  0x57  0x01
+        generate->code[generate->ptr++] = 0x66;
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x57;
+        generate->code[generate->ptr++] = n;
+      }
+        else
+      {
+        // mov dx, [edi+128]:  0x66  0x67  0x8B  0x97  0x80  0x00  0x00  0x00
+        generate->code[generate->ptr++] = 0x66;
+        generate->code[generate->ptr++] = 0x67;
+        generate->code[generate->ptr++] = 0x8b;
+        generate->code[generate->ptr++] = 0x97;
+        generate->code[generate->ptr++] = n & 0xff;
+        generate->code[generate->ptr++] = (n >> 8) & 0xff;
+        generate->code[generate->ptr++] = (n >> 16) & 0xff;
+        generate->code[generate->ptr++] = (n >> 24) & 0xff;
+      }
+
+      // cmp dx, bx:  0x66  0x39  0xDA
+      generate->code[generate->ptr++] = 0x66;
+      generate->code[generate->ptr++] = 0x39;
+      generate->code[generate->ptr++] = 0xda;
+
+      n += 2;
+    }
+      else
+    {
+      // mov bl, 3:  0xB3  0x03
+      generate->code[generate->ptr++] = 0xb3;
+      generate->code[generate->ptr++] = match[n+0];
+
+      if (n == 0)
+      {
+        // mov dl, [rdi]:  0x8A  0x17
+        generate->code[generate->ptr++] = 0x8a;
+        generate->code[generate->ptr++] = 0x17;
+      }
+        else
+      if (n < 128)
+      {
+        // mov dl, [rdi+1]:  0x8A  0x57  0x01
+        generate->code[generate->ptr++] = 0x8a;
+        generate->code[generate->ptr++] = 0x57;
+        generate->code[generate->ptr++] = n;
+      }
+        else
+      {
+        // mov dl, [rdi+128]:  0x8A  0x97  0x80  0x00  0x00  0x00
+        generate->code[generate->ptr++] = 0x8a;
+        generate->code[generate->ptr++] = 0x97;
+        generate->code[generate->ptr++] = n & 0xff;
+        generate->code[generate->ptr++] = (n >> 8) & 0xff;
+        generate->code[generate->ptr++] = (n >> 16) & 0xff;
+        generate->code[generate->ptr++] = (n >> 24) & 0xff;
+      }
+
+      // cmp dl, bl:  0x38  0xDA
+      generate->code[generate->ptr++] = 0x38;
+      generate->code[generate->ptr++] = 0xda;
+
+      n++;
+    }
+
+    // je skip_exit: 0x73 0x01
+    generate->code[generate->ptr++] = 0x74;
+    generate->code[generate->ptr++] = 0x01;
+
+    // ret: 0xc3
+    generate->code[generate->ptr++] = 0xc3;
+  }
 
   return 0;
 }
@@ -134,7 +327,7 @@ static int generate_strlen(struct _generate *generate, int len)
     generate->code[generate->ptr++] = (len >> 24) & 0xff;
   }
 
-  // jge exit: 0x73 0x03
+  // jge skip_exit: 0x73 0x03
   generate->code[generate->ptr++] = 0x7d;
   generate->code[generate->ptr++] = 0x01;
 
