@@ -51,7 +51,11 @@ int main(int argc, char *argv[])
     if (ch == '\n' || ch == EOF)
     {
       line[ptr++] = 0;
-      if (match(line) == 1) { printf("%s\n", line); }
+      int result = match(line);
+
+      //if (result != 0) { printf("%s\n", line); }
+      printf("%d) %s\n", result, line);
+
       if (ch == EOF) { break; }
       ptr = 0;
       continue;
