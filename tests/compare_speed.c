@@ -59,13 +59,17 @@ int main(int argc, char *argv[])
   int regex_substr_vec[30];
   pcre_extra *regex_extra;
   pcre *regex_compiled;
-  char *regex = "^int ";
+  char *regex;
+  char *startswith;
 
-  if (argc != 3)
+  if (argc != 5)
   {
-    printf("Usage: test <file> <string>\n");
+    printf("Usage: test <file> <easy check> <regex> <strncmp>\n");
     exit(0);
   }
+
+  regex = argv[3];
+  startswith = argv[4];
 
   regex_compiled = pcre_compile(regex, 0, &regex_error, &regex_error_offset, NULL);
 
@@ -143,12 +147,11 @@ int main(int argc, char *argv[])
 
   printf("strncmp()\n");
 
-  int len = strlen("int ");
   count = 0;
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
-    if (strncmp(buffer + lines[i], "int ", len) == 0) { count++; }
+    if (strcmp(buffer + lines[i], startswith) == 0) { count++; }
   }
   TIMER_STOP
   printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
