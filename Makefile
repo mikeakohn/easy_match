@@ -7,7 +7,7 @@ default:
 	@+make -C build
 
 test_tokens:
-	gcc -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
+	$(CC) -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
 
 clean:
 	@rm -f build/*.o
