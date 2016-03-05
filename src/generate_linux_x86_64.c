@@ -26,6 +26,10 @@ int generate_init(struct _generate *generate, uint8_t *code)
   generate->ptr = 0;
   generate->reg = 0;
 
+  // mov [rsp-8], rbx: 0x48 0x89 0x5c 0x24 0xf8
+  generate_code(generate, 5, 0x48, 0x89, 0x5c, 0x24, 0xf8);
+
+
   // xor eax, eax: 0x31  0xC0
   generate_code(generate, 2, 0x31, 0xc0);
 
@@ -189,7 +193,10 @@ int generate_startswith(struct _generate *generate, char *match)
     }
 
     // je skip_exit: 0x73 0x01
-    generate_code(generate, 2, 0x74, 0x01);
+    generate_code(generate, 2, 0x74, 0x06);
+
+    // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
+    generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
 
     // ret: 0xc3
     generate_code(generate, 1, 0xc3);
@@ -218,10 +225,13 @@ int generate_finish(struct _generate *generate)
   // inc eax: 0xff 0xc0
   generate_code(generate, 2, 0xff, 0xc0);
 
+  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
+  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
+
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
 
-#if 0
+#if DEBUG
   FILE *out = fopen("/tmp/debug.bin", "wb");
   fwrite(generate->code, 1, generate->ptr, out);
   fclose(out);
@@ -245,7 +255,10 @@ static int generate_strlen(struct _generate *generate, int len)
   }
 
   // jge skip_exit: 0x73 0x03
-  generate_code(generate, 2, 0x7d, 0x01);
+  generate_code(generate, 2, 0x7d, 0x06);
+
+  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
+  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
 
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
