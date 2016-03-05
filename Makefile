@@ -10,7 +10,7 @@ test_tokens:
 	$(CC) -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
 
 speed:
-	$(CC) -o compare_speed tests/compare_speed.c build/*.o -Isrc $(CFLAGS)
+	$(CC) -o compare_speed tests/compare_speed.c build/*.o -Isrc -lpcre $(CFLAGS)
 
 clean:
 	@rm -f build/*.o

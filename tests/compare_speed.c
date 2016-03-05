@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <pcre.h>
+
 #include "compiler.h"
 
 union _perftime
@@ -52,12 +54,28 @@ int main(int argc, char *argv[])
   int i;
   union _perftime perf_start;
   union _perftime perf_end;
+  const char *regex_error;
+  int regex_error_offset;
+  int regex_substr_vec[30];
+  pcre_extra *regex_extra;
+  pcre *regex_compiled;
+  char *regex = "^int ";
 
   if (argc != 3)
   {
     printf("Usage: test <file> <string>\n");
     exit(0);
   }
+
+  regex_compiled = pcre_compile(regex, 0, &regex_error, &regex_error_offset, NULL);
+
+  if (regex_compiled == NULL)
+  {
+    printf("Error compiling regex\n");
+    exit(1);
+  }
+
+  regex_extra = pcre_study(regex_compiled, 0, &regex_error);
 
   match = compiler_generate(argv[2]);
 
@@ -111,6 +129,8 @@ int main(int argc, char *argv[])
     buffer[ptr++] = ch;
   }
 
+  printf("Easy Match\n");
+
   count = 0;
   TIMER_START
   for (i = 0; i < line_count; i++)
@@ -121,6 +141,8 @@ int main(int argc, char *argv[])
   TIMER_STOP
   printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
 
+  printf("strncmp()\n");
+
   int len = strlen("int ");
   count = 0;
   TIMER_START
@@ -130,6 +152,29 @@ int main(int argc, char *argv[])
   }
   TIMER_STOP
   printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+
+  printf("PCRE\n");
+
+  count = 0;
+  TIMER_START
+  for (i = 0; i < line_count; i++)
+  {
+    int regex_ret = pcre_exec(regex_compiled,
+                              regex_extra,
+                              buffer + lines[i],
+                              strlen(buffer + lines[i]), // length of string
+                              0,                 // Start looking at this point
+                              0,                 // OPTIONS
+                              regex_substr_vec,
+                              30);               // Length of subStrVec
+
+    if (regex_ret != PCRE_ERROR_NOMATCH) { count++; }
+  }
+  TIMER_STOP
+  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+
+  if (regex_extra != NULL) { pcre_free(regex_extra); }
+  pcre_free(regex_compiled);
 
   compiler_free(match);
 
