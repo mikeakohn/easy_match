@@ -17,12 +17,13 @@
 
 #include "generate.h"
 
-#define STRLEN_FITS 0
+#define STRLEN_ATLEAST 0
 #define STRLEN_EQUALS 1
 #define MATCH_OPTION_NONE 0
 #define MATCH_OPTION_RESTORE_RDI 1
 
 static int generate_strlen(struct _generate *generate, int len, int equals);
+static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
 static int generate_match(struct _generate *generate, char *match, int len, int option);
 
@@ -73,7 +74,7 @@ int generate_startswith(struct _generate *generate, char *match)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, STRLEN_FITS);
+  generate_strlen(generate, len, STRLEN_ATLEAST);
   generate_match(generate, match, len, MATCH_OPTION_NONE);
 
   return 0;
@@ -83,31 +84,8 @@ int generate_endswith(struct _generate *generate, char *match)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, STRLEN_FITS);
-
-  // Move rdi to the end of the string.
-  // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
-  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
-
-  // add rdi, rsi: 0x48 0x01 0xf7
-  generate_code(generate, 3, 0x48, 0x01, 0xf7);
-
-  if (len < 128)
-  {
-    // sub rdi, 100: 0x48 0x83 0xef 0x64
-    generate_code(generate, 4, 0x48, 0x83, 0xef, len);
-  }
-    else
-  if (len < 32768)
-  {
-    // sub rdi, 128: 0x48 0x81 0xef 0x80 0x00 0x00 0x00
-    generate_code(generate, 7, 0x48, 0x81, 0xef,
-      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
-  }
-    else
-  {
-    return -1;
-  }
+  generate_strlen(generate, len, STRLEN_ATLEAST);
+  if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
 
   generate_match(generate, match, len, MATCH_OPTION_RESTORE_RDI);
 
@@ -131,10 +109,45 @@ int generate_equals(struct _generate *generate, char *match)
 int generate_contains(struct _generate *generate, char *match)
 {
   int len = strlen(match);
+  int label;
+  int distance;
 
-  generate_strlen(generate, len, STRLEN_FITS);
+  generate_strlen(generate, len, STRLEN_ATLEAST);
 
-  return -1;
+  // mov rcx, rdi: 0x48 0x89 0xf9
+  //generate_code(generate, 3, 0x48, 0x89, 0xf9);
+
+  if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
+
+  label = generate->ptr;
+
+  generate_match(generate, match, len, MATCH_OPTION_NONE);
+
+  // dec rdi: 0x48 0xff 0xcf
+  generate_code(generate, 3, 0x48, 0xff, 0xcf);
+
+  // cmp [rsp-16], rdi: 0x48 0x39 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x39, 0x7c, 0x24, 0xf0);
+
+  distance = generate->ptr - label;
+
+  if (distance + 2 <= 128)
+  {
+    distance = -(distance + 2);
+
+    // jne label: 0x75 label
+    generate_code(generate, 2, 0x75, distance);
+  }
+    else
+  {
+    distance = -(distance + 3);
+
+    // jne label: 0x0f 0x85 label
+    generate_code(generate, 3, 0x0f, 0x85,
+      distance & 0xff, (distance >> 8) & 0xff);
+  }
+
+  return 0;
 }
 
 int generate_finish(struct _generate *generate)
@@ -172,7 +185,7 @@ static int generate_strlen(struct _generate *generate, int len, int equals)
       len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
   }
 
-  if (equals == STRLEN_FITS)
+  if (equals == STRLEN_ATLEAST)
   {
     // jge skip_exit: 0x7d 0x03
     generate_code(generate, 2, 0x7d, 0x06);
@@ -188,6 +201,35 @@ static int generate_strlen(struct _generate *generate, int len, int equals)
 
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
+
+  return 0;
+}
+
+static int generate_mov_rdi_end(struct _generate *generate, int len)
+{
+  // Move rdi to the end of the string.
+  // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
+
+  // add rdi, rsi: 0x48 0x01 0xf7
+  generate_code(generate, 3, 0x48, 0x01, 0xf7);
+
+  if (len < 128)
+  {
+    // sub rdi, 100: 0x48 0x83 0xef 0x64
+    generate_code(generate, 4, 0x48, 0x83, 0xef, len);
+  }
+    else
+  if (len < 32768)
+  {
+    // sub rdi, 128: 0x48 0x81 0xef 0x80 0x00 0x00 0x00
+    generate_code(generate, 7, 0x48, 0x81, 0xef,
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+    else
+  {
+    return -1;
+  }
 
   return 0;
 }
