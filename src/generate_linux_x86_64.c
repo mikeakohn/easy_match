@@ -17,9 +17,14 @@
 
 #include "generate.h"
 
+#define STRLEN_FITS 0
+#define STRLEN_EQUALS 1
+#define MATCH_OPTION_NONE 0
+#define MATCH_OPTION_RESTORE_RDI 1
+
 static int generate_strlen(struct _generate *generate, int len, int equals);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
-static int generate_match(struct _generate *generate, char *match, int len, int restore_rdi);
+static int generate_match(struct _generate *generate, char *match, int len, int option);
 
 int generate_init(struct _generate *generate, uint8_t *code)
 {
@@ -68,8 +73,8 @@ int generate_startswith(struct _generate *generate, char *match)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, 0);
-  generate_match(generate, match, len, 0);
+  generate_strlen(generate, len, STRLEN_FITS);
+  generate_match(generate, match, len, MATCH_OPTION_NONE);
 
   return 0;
 }
@@ -78,7 +83,7 @@ int generate_endswith(struct _generate *generate, char *match)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, 0);
+  generate_strlen(generate, len, STRLEN_FITS);
 
   // Move rdi to the end of the string.
   // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
@@ -104,7 +109,7 @@ int generate_endswith(struct _generate *generate, char *match)
     return -1;
   }
 
-  generate_match(generate, match, len, 1);
+  generate_match(generate, match, len, MATCH_OPTION_RESTORE_RDI);
 
   // Restore rdi.
   // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
@@ -117,14 +122,18 @@ int generate_equals(struct _generate *generate, char *match)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, 1);
-  generate_match(generate, match, len, 0);
+  generate_strlen(generate, len, STRLEN_EQUALS);
+  generate_match(generate, match, len, MATCH_OPTION_NONE);
 
   return 0;
 }
 
 int generate_contains(struct _generate *generate, char *match)
 {
+  int len = strlen(match);
+
+  generate_strlen(generate, len, STRLEN_FITS);
+
   return -1;
 }
 
@@ -158,12 +167,12 @@ static int generate_strlen(struct _generate *generate, int len, int equals)
   }
     else
   {
-  // cmp rsi, 200: 0x48 0x81 0xfe 0xc8 0x00 0x00 0x00
-  generate_code(generate, 7, 0x48, 0x81, 0xfe, 
-    len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+    // cmp rsi, 200: 0x48 0x81 0xfe 0xc8 0x00 0x00 0x00
+    generate_code(generate, 7, 0x48, 0x81, 0xfe, 
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
   }
 
-  if (equals == 0)
+  if (equals == STRLEN_FITS)
   {
     // jge skip_exit: 0x7d 0x03
     generate_code(generate, 2, 0x7d, 0x06);
@@ -201,7 +210,7 @@ static int generate_code(struct _generate *generate, uint8_t len, ...)
   return 0;
 }
 
-static int generate_match(struct _generate *generate, char *match, int len, int restore_rdi)
+static int generate_match(struct _generate *generate, char *match, int len, int option)
 {
   int n;
 
@@ -241,98 +250,84 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
       else
     if ((len - n) >= 4)
     {
-      // mov ebx, 0x12345678: 0xbb 0x78 0x56 0x34 0x12
-      generate_code(generate, 5, 0xbb,
-        match[n+0], match[n+1], match[n+2], match[n+3]);
-
       if (n == 0)
       {
-        // mov edx, [rdi]: 0x8b 0x17
-        generate_code(generate, 2, 0x8b, 0x17);
+        // cmp dword [rdi], 0xff: 0x81 0x3f 0xff 0x00 0x00 0x00
+        generate_code(generate, 6, 0x81, 0x3f,
+          match[n+0], match[n+1], match[n+2], match[n+3]);
       }
         else
       if (n < 128)
       {
-        // mov edx, [rdi+1]: 0x8b 0x57 0x01
-        generate_code(generate, 3, 0x8b, 0x57, n);
+        // cmp dword [rdi+1], 0xff: 0x81 0x7f 0x01 0xff 0x00 0x00 0x00
+        generate_code(generate, 7, 0x81, 0x7f, n,
+          match[n+0], match[n+1], match[n+2], match[n+3]);
       }
         else
       {
-        // mov edx, [rdi+128]: 0x8b 0x97 0x80 0x00 0x00 0x00
-        generate_code(generate, 6, 0x8b, 0x97,
-          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff);
+        // cmp dword [rdi+128], 0xff: 0x81 0xbf 0x80 0x00 0x00 0x00 0xff 0x00
+        generate_code(generate, 10, 0x81, 0xbf,
+          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
+          match[n+0], match[n+1], match[n+2], match[n+3]);
       }
-
-      // cmp edx, ebx: 0x39 0xda
-      generate_code(generate, 2, 0x39, 0xda);
 
       n += 4;
     }
       else
     if ((len - n) >= 2)
     {
-      // mov bx, 0x1234: 0x66 0xbb 0x34 0x12
-      generate_code(generate, 4, 0x66, 0xbb, match[n+0], match[n+1]);
-
       if (n == 0)
       {
-        // mov dx, [rdi]: 0x66 0x8b 0x17
-        generate_code(generate, 3, 0x66, 0x8b, 0x17);
+        // cmp word [rdi], 0xff: 0x66 0x81 0x3f 0xff 0x00
+        generate_code(generate, 5, 0x66, 0x81, 0x3f, match[n+0], match[n+1]);
       }
         else
       if (n < 128)
       {
-        // mov dx, [rdi+1]: 0x66 0x8b 0x57 0x01
-        generate_code(generate, 4, 0x66, 0x8b, 0x57, n);
+        // cmp word [rdi+1], 0xff: 0x66 0x81 0x7f 0x01 0xff 0x00
+        generate_code(generate, 6, 0x66, 0x81, 0x7f, n, match[n+0], match[n+1]);
       }
         else
       {
-        // mov dx, [rdi+128]: 0x66 0x8b 0x97 0x80 0x00 0x00 0x00
-        generate_code(generate, 7, 0x66, 0x8b, 0x97,
-          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff);
+        // cmp word [rdi+128], 0xff: 0x66 0x81 0xbf 0x80 0x00 0x00 0x00 0xff 0x
+        generate_code(generate, 9, 0x66, 0x81, 0xbf,
+          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
+          match[n+0], match[n+1]);
       }
-
-      // cmp dx, bx: 0x66 0x39 0xda
-      generate_code(generate, 3, 0x66, 0x39, 0xda);
 
       n += 2;
     }
       else
     {
-      // mov bl, 3: 0xb3 0x03
-      generate_code(generate, 2, 0xb3, match[n+0]);
-
       if (n == 0)
       {
-        // mov dl, [rdi]: 0x8a 0x17
-        generate_code(generate, 2, 0x8a, 0x17);
+        // cmp byte [rdi], 128: 0x80 0x3f 0x80
+        generate_code(generate, 3, 0x80, 0x3f, match[n+0]);
       }
         else
       if (n < 128)
       {
-        // mov dl, [rdi+1]: 0x8a 0x57 0x01
-        generate_code(generate, 3, 0x8a, 0x57, n);
+        // cmp byte [rdi+1], 0xff: 0x80 0x7f 0x01 0xff
+        generate_code(generate, 4, 0x80, 0x7f, n, match[n+0]);
       }
         else
       {
-        // mov dl, [rdi+128]: 0x8a 0x97 0x80 0x00 0x00 0x00
-        generate_code(generate, 6, 0x8a, 0x97,
-          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff);
+        // cmp byte [rdi+128], 0xff: 0x80 0xbf 0x80 0x00 0x00 0x00 0xff
+        generate_code(generate, 7, 0x80, 0xbf,
+          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
+          match[n+0]);
       }
-
-      // cmp dl, bl: 0x38 0xda
-      generate_code(generate, 2, 0x38, 0xda);
 
       n++;
     }
 
     // je skip_exit: 0x73 0x01
-    generate_code(generate, 2, 0x74, restore_rdi == 0 ? 0x06 : 0x0b);
+    generate_code(generate, 2, 0x74, option == MATCH_OPTION_NONE ? 0x06 : 0x0b);
 
     // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
     generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
 
-    if (restore_rdi)
+    if (option)
     {
       // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
       generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
