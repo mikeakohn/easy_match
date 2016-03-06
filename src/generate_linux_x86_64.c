@@ -19,7 +19,7 @@
 
 static int generate_strlen(struct _generate *generate, int len, int equals);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
-static int generate_match(struct _generate *generate, char *match, int len);
+static int generate_match(struct _generate *generate, char *match, int len, int restore_rdi);
 
 int generate_init(struct _generate *generate, uint8_t *code)
 {
@@ -69,7 +69,7 @@ int generate_startswith(struct _generate *generate, char *match)
   int len = strlen(match);
 
   generate_strlen(generate, len, 0);
-  generate_match(generate, match, len);
+  generate_match(generate, match, len, 0);
 
   return 0;
 }
@@ -79,9 +79,38 @@ int generate_endswith(struct _generate *generate, char *match)
   int len = strlen(match);
 
   generate_strlen(generate, len, 0);
-  generate_match(generate, match, len);
 
-  return -1;
+  // Move rdi to the end of the string.
+  // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
+
+  // add rdi, rsi: 0x48 0x01 0xf7
+  generate_code(generate, 3, 0x48, 0x01, 0xf7);
+
+  if (len < 128)
+  {
+    // sub rdi, 100: 0x48 0x83 0xef 0x64
+    generate_code(generate, 4, 0x48, 0x83, 0xef, len);
+  }
+    else
+  if (len < 32768)
+  {
+    // sub rdi, 128: 0x48 0x81 0xef 0x80 0x00 0x00 0x00
+    generate_code(generate, 7, 0x48, 0x81, 0xef,
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+    else
+  {
+    return -1;
+  }
+
+  generate_match(generate, match, len, 1);
+
+  // Restore rdi.
+  // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+
+  return 0;
 }
 
 int generate_equals(struct _generate *generate, char *match)
@@ -89,7 +118,7 @@ int generate_equals(struct _generate *generate, char *match)
   int len = strlen(match);
 
   generate_strlen(generate, len, 1);
-  generate_match(generate, match, len);
+  generate_match(generate, match, len, 0);
 
   return 0;
 }
@@ -172,7 +201,7 @@ static int generate_code(struct _generate *generate, uint8_t len, ...)
   return 0;
 }
 
-static int generate_match(struct _generate *generate, char *match, int len)
+static int generate_match(struct _generate *generate, char *match, int len, int restore_rdi)
 {
   int n;
 
@@ -298,10 +327,16 @@ static int generate_match(struct _generate *generate, char *match, int len)
     }
 
     // je skip_exit: 0x73 0x01
-    generate_code(generate, 2, 0x74, 0x06);
+    generate_code(generate, 2, 0x74, restore_rdi == 0 ? 0x06 : 0x0b);
 
     // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
     generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
+
+    if (restore_rdi)
+    {
+      // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+      generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+    }
 
     // ret: 0xc3
     generate_code(generate, 1, 0xc3);
