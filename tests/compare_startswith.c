@@ -147,11 +147,13 @@ int main(int argc, char *argv[])
 
   printf("strncmp()\n");
 
+  int len = strlen(startswith);
+
   count = 0;
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
-    if (strcmp(buffer + lines[i], startswith) == 0) { count++; }
+    if (strncmp(buffer + lines[i], startswith, len) == 0) { count++; }
   }
   TIMER_STOP
   printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
