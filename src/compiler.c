@@ -88,12 +88,12 @@ match_t compiler_generate(char *code)
       else
     if (strcmp(tokens.next, "equals") == 0)
     {
-      GENERATE(endswith);
+      GENERATE(equals);
     }
       else
     if (strcmp(tokens.next, "contains") == 0)
     {
-      GENERATE(endswith);
+      GENERATE(contains);
     }
       else
     {

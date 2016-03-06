@@ -17,8 +17,9 @@
 
 #include "generate.h"
 
-static int generate_strlen(struct _generate *generate, int len);
+static int generate_strlen(struct _generate *generate, int len, int equals);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
+static int generate_match(struct _generate *generate, char *match, int len);
 
 int generate_init(struct _generate *generate, uint8_t *code)
 {
@@ -28,7 +29,6 @@ int generate_init(struct _generate *generate, uint8_t *code)
 
   // mov [rsp-8], rbx: 0x48 0x89 0x5c 0x24 0xf8
   generate_code(generate, 5, 0x48, 0x89, 0x5c, 0x24, 0xf8);
-
 
   // xor eax, eax: 0x31  0xC0
   generate_code(generate, 2, 0x31, 0xc0);
@@ -67,9 +67,114 @@ int generate_not(struct _generate *generate)
 int generate_startswith(struct _generate *generate, char *match)
 {
   int len = strlen(match);
-  int n;
 
-  generate_strlen(generate, len);
+  generate_strlen(generate, len, 0);
+  generate_match(generate, match, len);
+
+  return 0;
+}
+
+int generate_endswith(struct _generate *generate, char *match)
+{
+  int len = strlen(match);
+
+  generate_strlen(generate, len, 0);
+  generate_match(generate, match, len);
+
+  return -1;
+}
+
+int generate_equals(struct _generate *generate, char *match)
+{
+  int len = strlen(match);
+
+  generate_strlen(generate, len, 1);
+  generate_match(generate, match, len);
+
+  return 0;
+}
+
+int generate_contains(struct _generate *generate, char *match)
+{
+  return -1;
+}
+
+int generate_finish(struct _generate *generate)
+{
+  // inc eax: 0xff 0xc0
+  generate_code(generate, 2, 0xff, 0xc0);
+
+  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
+  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
+
+  // ret: 0xc3
+  generate_code(generate, 1, 0xc3);
+
+//#define DEBUG
+#ifdef DEBUG
+  FILE *out = fopen("/tmp/debug.bin", "wb");
+  fwrite(generate->code, 1, generate->ptr, out);
+  fclose(out);
+#endif
+
+  return 0;
+}
+
+static int generate_strlen(struct _generate *generate, int len, int equals)
+{
+  if (len < 128)
+  {
+    // cmp rsi, 4: 0x48 0x83 0xfe 0x04
+    generate_code(generate, 4, 0x48, 0x83, 0xfe, len);
+  }
+    else
+  {
+  // cmp rsi, 200: 0x48 0x81 0xfe 0xc8 0x00 0x00 0x00
+  generate_code(generate, 7, 0x48, 0x81, 0xfe, 
+    len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+
+  if (equals == 0)
+  {
+    // jge skip_exit: 0x7d 0x03
+    generate_code(generate, 2, 0x7d, 0x06);
+  }
+    else
+  {
+    // je skip_exit: 0x74 0x03
+    generate_code(generate, 2, 0x74, 0x06);
+  }
+
+  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
+  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
+
+  // ret: 0xc3
+  generate_code(generate, 1, 0xc3);
+
+  return 0;
+}
+
+static int generate_code(struct _generate *generate, uint8_t len, ...)
+{
+  va_list argp;
+  int i, data;
+
+  va_start(argp, len);
+
+  for (i = 0; i < len; i++)
+  {
+    data = va_arg(argp, int);
+    generate->code[generate->ptr++] = data;
+  }
+
+  va_end(argp);
+
+  return 0;
+}
+
+static int generate_match(struct _generate *generate, char *match, int len)
+{
+  int n;
 
   n = 0;
   while (n < len)
@@ -77,7 +182,7 @@ int generate_startswith(struct _generate *generate, char *match)
     if ((len - n) >= 8)
     {
       // mov rbx, 0x8877665544332211: 0x48 0xbb 0x11 ...
-      generate_code(generate, 8, 0x48, 0xbb,
+      generate_code(generate, 10, 0x48, 0xbb,
         match[n+0], match[n+1], match[n+2], match[n+3],
         match[n+4], match[n+5], match[n+6], match[n+7]);
 
@@ -204,84 +309,4 @@ int generate_startswith(struct _generate *generate, char *match)
 
   return 0;
 }
-
-int generate_endswith(struct _generate *generate, char *match)
-{
-  return -1;
-}
-
-int generate_equals(struct _generate *generate, char *match)
-{
-  return -1;
-}
-
-int generate_contains(struct _generate *generate, char *match)
-{
-  return -1;
-}
-
-int generate_finish(struct _generate *generate)
-{
-  // inc eax: 0xff 0xc0
-  generate_code(generate, 2, 0xff, 0xc0);
-
-  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
-  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
-
-  // ret: 0xc3
-  generate_code(generate, 1, 0xc3);
-
-#if DEBUG
-  FILE *out = fopen("/tmp/debug.bin", "wb");
-  fwrite(generate->code, 1, generate->ptr, out);
-  fclose(out);
-#endif
-
-  return 0;
-}
-
-static int generate_strlen(struct _generate *generate, int len)
-{
-  if (len < 128)
-  {
-    // cmp rsi, 4: 0x48 0x83 0xfe 0x04
-    generate_code(generate, 4, 0x48, 0x83, 0xfe, len);
-  }
-    else
-  {
-  // cmp rsi, 200: 0x48 0x81 0xfe 0xc8 0x00 0x00 0x00
-  generate_code(generate, 7, 0x48, 0x81, 0xfe, 
-    len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
-  }
-
-  // jge skip_exit: 0x73 0x03
-  generate_code(generate, 2, 0x7d, 0x06);
-
-  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
-  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
-
-  // ret: 0xc3
-  generate_code(generate, 1, 0xc3);
-
-  return 0;
-}
-
-static int generate_code(struct _generate *generate, uint8_t len, ...)
-{
-  va_list argp;
-  int i, data;
-
-  va_start(argp, len);
-
-  for (i = 0; i < len; i++)
-  {
-    data = va_arg(argp, int);
-    generate->code[generate->ptr++] = data;
-  }
-
-  va_end(argp);
-
-  return 0;
-}
-
 
