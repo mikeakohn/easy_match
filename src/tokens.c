@@ -18,6 +18,7 @@
 void tokens_init(struct _tokens *tokens, char *code)
 {
   tokens->code = code;
+  tokens->start = code;
   tokens->next = malloc(strlen(code) + 1);
 }
 
@@ -112,6 +113,11 @@ int tokens_next(struct _tokens *tokens)
   tokens->code = code;
 
   return token_type;
+}
+
+void tokens_reset(struct _tokens *tokens)
+{
+  tokens->code = tokens->start;
 }
 
 void tokens_free(struct _tokens *tokens)

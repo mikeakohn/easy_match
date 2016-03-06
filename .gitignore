@@ -1,3 +1,7 @@
 *.o
 test_tokens
 easy_match
+compare_startswith
+compare_endswith
+examples.txt
+test.asm

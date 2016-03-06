@@ -24,13 +24,13 @@ struct _tokens
 {
   char *code;
   char *next;
-  //int ptr;
+  char *start;
   int len;
-  //char old;
 };
 
 void tokens_init(struct _tokens *tokens, char *code);
 int tokens_next(struct _tokens *tokens);
+void tokens_reset(struct _tokens *tokens);
 void tokens_free(struct _tokens *tokens);
 
 #endif

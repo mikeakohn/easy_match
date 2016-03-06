@@ -19,6 +19,12 @@ struct _generate
   uint8_t *code;
   int ptr;
   int reg;
+  int startswith;
+  int endswith;
+  int equals;
+  int contains;
+  int and;
+  int or;
 };
 
 int generate_init(struct _generate *generate, uint8_t *code);

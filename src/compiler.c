@@ -61,10 +61,36 @@ match_t compiler_generate(char *code)
   int error = 0;
   int not = 0;
 
+  memset(&generate, 0, sizeof(generate));
+
   match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
 
   generate_init(&generate, (uint8_t *)match);
   tokens_init(&tokens, code);
+
+  while(1)
+  {
+    token_type = tokens_next(&tokens);
+    if (token_type == TOKEN_EOF) { break; }
+
+    if (strcmp(tokens.next, "startswith") == 0) { generate.startswith++; }
+    else if (strcmp(tokens.next, "endswith") == 0) { generate.endswith++; }
+    else if (strcmp(tokens.next, "equals") == 0) { generate.equals++; }
+    else if (strcmp(tokens.next, "contains") == 0) { generate.contains++; }
+    else if (strcmp(tokens.next, "and") == 0) { generate.and++; }
+    else if (strcmp(tokens.next, "or") == 0) { generate.or++; }
+  }
+
+  tokens_reset(&tokens);
+
+#if 0
+  printf("startswith: %d\n", generate.startswith);
+  printf("  endswith: %d\n", generate.endswith);
+  printf("    equals: %d\n", generate.equals);
+  printf("  contains: %d\n", generate.contains);
+  printf("       and: %d\n", generate.and);
+  printf("        or: %d\n", generate.or);
+#endif
 
   while(1)
   {
