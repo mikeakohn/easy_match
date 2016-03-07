@@ -29,7 +29,7 @@
   } \
  \
   token_type = tokens_next(&tokens); \
-  if (generate_##command(&generate, tokens.next) != 0) \
+  if (generate_##command(&generate, tokens.next, not) != 0) \
   { \
     error = 1; \
     break; \
@@ -41,16 +41,7 @@
     error = 1; \
     break; \
   } \
- \
-  if (not == 1) \
-  { \
-    if (generate_not(&generate) != 0) \
-    { \
-      error = 1; \
-      break; \
-    } \
-    not = 0; \
-  }
+  not = 0;
 
 match_t compiler_generate(char *code)
 {

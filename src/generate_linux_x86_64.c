@@ -19,13 +19,14 @@
 
 #define STRLEN_ATLEAST 0
 #define STRLEN_EQUALS 1
-#define MATCH_OPTION_NONE 0
-#define MATCH_OPTION_RESTORE_RDI 1
+//#define MATCH_OPTION_NONE 0
+//#define MATCH_OPTION_RESTORE_RDI 1
 
 static int generate_strlen(struct _generate *generate, int len, int equals);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
-static int generate_match(struct _generate *generate, char *match, int len, int option);
+static int generate_set_reg(struct _generate *generate, int value);
+static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code)
 {
@@ -62,32 +63,24 @@ int generate_init(struct _generate *generate, uint8_t *code)
   return 0;
 }
 
-int generate_not(struct _generate *generate)
-{
-  // xor eax, 1: 0x83 0xf0 0x01
-  generate_code(generate, 3, 0x83, 0xf0, 0x01);
-
-  return 0;
-}
-
-int generate_startswith(struct _generate *generate, char *match)
+int generate_startswith(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
   generate_strlen(generate, len, STRLEN_ATLEAST);
-  generate_match(generate, match, len, MATCH_OPTION_NONE);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   return 0;
 }
 
-int generate_endswith(struct _generate *generate, char *match)
+int generate_endswith(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
   generate_strlen(generate, len, STRLEN_ATLEAST);
   if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
 
-  generate_match(generate, match, len, MATCH_OPTION_RESTORE_RDI);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   // Restore rdi.
   // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
@@ -96,17 +89,17 @@ int generate_endswith(struct _generate *generate, char *match)
   return 0;
 }
 
-int generate_equals(struct _generate *generate, char *match)
+int generate_equals(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
   generate_strlen(generate, len, STRLEN_EQUALS);
-  generate_match(generate, match, len, MATCH_OPTION_NONE);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   return 0;
 }
 
-int generate_contains(struct _generate *generate, char *match)
+int generate_contains(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
   int label;
@@ -121,7 +114,7 @@ int generate_contains(struct _generate *generate, char *match)
 
   label = generate->ptr;
 
-  generate_match(generate, match, len, MATCH_OPTION_NONE);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   // dec rdi: 0x48 0xff 0xcf
   generate_code(generate, 3, 0x48, 0xff, 0xcf);
@@ -153,7 +146,7 @@ int generate_contains(struct _generate *generate, char *match)
 int generate_finish(struct _generate *generate)
 {
   // inc eax: 0xff 0xc0
-  generate_code(generate, 2, 0xff, 0xc0);
+  //generate_code(generate, 2, 0xff, 0xc0);
 
   // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
   generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
@@ -161,7 +154,7 @@ int generate_finish(struct _generate *generate)
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
 
-//#define DEBUG
+#define DEBUG
 #ifdef DEBUG
   FILE *out = fopen("/tmp/debug.bin", "wb");
   fwrite(generate->code, 1, generate->ptr, out);
@@ -175,32 +168,29 @@ static int generate_strlen(struct _generate *generate, int len, int equals)
 {
   if (len < 128)
   {
-    // cmp rsi, 4: 0x48 0x83 0xfe 0x04
+    // cmp rsi, 1: 0x48 0x83 0xfe 0x01
     generate_code(generate, 4, 0x48, 0x83, 0xfe, len);
   }
     else
   {
-    // cmp rsi, 200: 0x48 0x81 0xfe 0xc8 0x00 0x00 0x00
+    // cmp rsi, 128: 0x48 0x81 0xfe 0x80 0x00 0x00 0x00
     generate_code(generate, 7, 0x48, 0x81, 0xfe, 
       len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
   }
 
+  // Note to self: make this possible to be a short jump
   if (equals == STRLEN_ATLEAST)
   {
-    // jge skip_exit: 0x7d 0x03
-    generate_code(generate, 2, 0x7d, 0x06);
+    // jl skip_exit: 0x0f, 0x8c, 0x00, 0x00, 0x00, 0x00
+    generate_code(generate, 6, 0x0f, 0x8c, 0x00, 0x00, 0x00, 0x00);
   }
     else
   {
-    // je skip_exit: 0x74 0x03
-    generate_code(generate, 2, 0x74, 0x06);
+    // jne skip_exit: 0x0f, 0x85, 0x00, 0x00, 0x00, 0x00
+    generate_code(generate, 6, 0x0f, 0x85, 0x00, 0x00, 0x00, 0x00);
   }
 
-  // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
-  generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
-
-  // ret: 0xc3
-  generate_code(generate, 1, 0xc3);
+  generate->strlen_ptr = generate->ptr;
 
   return 0;
 }
@@ -252,8 +242,27 @@ static int generate_code(struct _generate *generate, uint8_t len, ...)
   return 0;
 }
 
-static int generate_match(struct _generate *generate, char *match, int len, int option)
+static int generate_set_reg(struct _generate *generate, int value)
 {
+  if (value == 0)
+  {
+    // xor eax, eax: 0x31 0xc0
+    generate_code(generate, 2, 0x31, 0xc0);
+  }
+    else
+  {
+    // mov eax, 1: 0xb8 0x01 0x00 0x00 0x00
+    generate_code(generate, 5, 0xb8, 0x01, 0x00, 0x00, 0x00);
+  }
+
+  return 0;
+}
+
+static int generate_match(struct _generate *generate, char *match, int len, int not)
+{
+  int jmp_exit[4096];
+  int jmp_exit_count = 0;
+  int distance;
   int n;
 
   n = 0;
@@ -363,21 +372,37 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
       n++;
     }
 
-    // je skip_exit: 0x73 0x01
-    generate_code(generate, 2, 0x74, option == MATCH_OPTION_NONE ? 0x06 : 0x0b);
+    // Note to self: This could be optimized by 2 bytes with some work
 
-    // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
-    generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
+    // jne skip_exit: 0x0f, 0x85, 0x01, 0x00, 0x00, 0x00
+    generate_code(generate, 6, 0x0f, 0x85, 0x00, 0x00, 0x00, 0x00);
 
-    if (option)
-    {
-      // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
-      generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
-    }
+    if (jmp_exit_count == 4096) { return -1; }
 
-    // ret: 0xc3
-    generate_code(generate, 1, 0xc3);
+    jmp_exit[jmp_exit_count++] = generate->ptr;
   }
+
+  generate_set_reg(generate, not ^ 1);
+
+  // jmp exit_block: 0xEB 0x00
+  generate_code(generate, 2, 0xeb, 0x00);
+
+  int label = generate->ptr;
+
+  for (n = jmp_exit_count - 1; n >= 0; n--)
+  {
+    distance = generate->ptr - jmp_exit[n];
+    generate->code[jmp_exit[n] - 4] = distance & 0xff;
+    generate->code[jmp_exit[n] - 3] = (distance >> 8) & 0xff;
+  }
+
+  distance = generate->ptr - generate->strlen_ptr;
+  generate->code[generate->strlen_ptr - 4] = distance & 0xff;
+  generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
+
+  generate_set_reg(generate, not);
+
+  generate->code[label - 1] = generate->ptr - label;
 
   return 0;
 }

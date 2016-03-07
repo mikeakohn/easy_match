@@ -25,14 +25,14 @@ struct _generate
   int contains;
   int and;
   int or;
+  int strlen_ptr;
 };
 
 int generate_init(struct _generate *generate, uint8_t *code);
-int generate_not(struct _generate *generate);
-int generate_startswith(struct _generate *generate, char *match);
-int generate_endswith(struct _generate *generate, char *match);
-int generate_equals(struct _generate *generate, char *match);
-int generate_contains(struct _generate *generate, char *match);
+int generate_startswith(struct _generate *generate, char *match, int not);
+int generate_endswith(struct _generate *generate, char *match, int not);
+int generate_equals(struct _generate *generate, char *match, int not);
+int generate_contains(struct _generate *generate, char *match, int not);
 int generate_finish(struct _generate *generate);
 
 #endif
