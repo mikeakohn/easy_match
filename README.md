@@ -1,4 +1,7 @@
 # easy_match
+
+[http://www.mikekohn.net/software/easy_match.php](http://www.mikekohn.net/software/easy_match.php)
+
 Experimental replacement for simple regex-like searches.  Easy Match
 will use syntax such as the following:
 
@@ -6,16 +9,16 @@ will use syntax such as the following:
 
 Search Keywords are:
 
-startswith()
-endswith()
-equals()
-contains()
+* startswith()
+* endswith()
+* equals()
+* contains()
 
 Other keywords:
 
-and
-or
-not
+* and
+* or
+* not
 
 Easy Match searches are compiled with a JIT into a assembly language
 function that can be called many times over:
