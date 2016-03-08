@@ -22,31 +22,54 @@
 #define OP_AND 1
 #define OP_OR 2
 
-#define GENERATE(command) \
-  token_type = tokens_next(tokens); \
-  if (token_type != TOKEN_PAREN_OPEN) \
-  { \
-    error = 1; \
-    break; \
-  } \
- \
-  token_type = tokens_next(tokens); \
-  if (generate_##command(generate, tokens->next, not) != 0) \
-  { \
-    error = 1; \
-    break; \
-  } \
- \
-  token_type = tokens_next(tokens); \
-  if (token_type != TOKEN_PAREN_CLOSE) \
-  { \
-    error = 1; \
-    break; \
-  } \
-  not = 0; \
-  command_count++
+#define FUNCTION_STARTSWITH 0
+#define FUNCTION_ENDSWITH 1
+#define FUNCTION_EQUALS 2
+#define FUNCTION_CONTAINS 3
 
-static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
+static int compile_function(struct _generate *generate, struct _tokens *tokens, int function, int not)
+{
+  int token_type;
+  int error = 0;
+
+  token_type = tokens_next(tokens);
+  if (token_type != TOKEN_PAREN_OPEN)
+  {
+    return 1;
+  }
+
+  token_type = tokens_next(tokens);
+
+  switch(function)
+  {
+    case FUNCTION_STARTSWITH:
+      if (generate_startswith(generate, tokens->next, not) != 0) { return 1; }
+      break;
+    case FUNCTION_ENDSWITH:
+      if (generate_endswith(generate, tokens->next, not) != 0) { return 1; }
+      break;
+    case FUNCTION_EQUALS:
+      if (generate_equals(generate, tokens->next, not) != 0) { return 1; }
+      break;
+    case FUNCTION_CONTAINS:
+      if (generate_contains(generate, tokens->next, not) != 0) { return 1; }
+      break;
+    default:
+      return 1;
+  }
+
+  token_type = tokens_next(tokens);
+  if (token_type != TOKEN_PAREN_CLOSE)
+  {
+    return 1;
+  }
+
+  generate->reg++;
+
+  return error;
+}
+
+static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens, int precedent)
 {
   int token_type;
   int error = 0;
@@ -67,22 +90,26 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
       else
     if (strcmp(tokens->next, "startswith") == 0)
     {
-      GENERATE(startswith);
+      error = compile_function(generate, tokens, FUNCTION_STARTSWITH, not);
+      not = 0;
     }
       else
     if (strcmp(tokens->next, "endswith") == 0)
     {
-      GENERATE(endswith);
+      error = compile_function(generate, tokens, FUNCTION_ENDSWITH, not);
+      not = 0;
     }
       else
     if (strcmp(tokens->next, "equals") == 0)
     {
-      GENERATE(equals);
+      error = compile_function(generate, tokens, FUNCTION_EQUALS, not);
+      not = 0;
     }
       else
     if (strcmp(tokens->next, "contains") == 0)
     {
-      GENERATE(contains);
+      error = compile_function(generate, tokens, FUNCTION_CONTAINS, not);
+      not = 0;
     }
       else
     if (strcmp(tokens->next, "and") == 0)
@@ -107,8 +134,9 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
       else
     {
       error = 1;
-      break;
     }
+
+    if (error == 1) { break; }
 
     //printf("%d) %s\n", token_type, tokens.next);
     if (token_type == TOKEN_ERROR) { break; }
@@ -156,7 +184,7 @@ match_t compiler_generate(char *code)
   printf("        or: %d\n", generate.or);
 #endif
 
-  if (compiler_evaluate(&generate, &tokens) == -1) { error = 1; }
+  if (compiler_evaluate(&generate, &tokens, 0) == -1) { error = 1; }
 
   generate_finish(&generate);
   tokens_free(&tokens);
