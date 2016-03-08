@@ -179,15 +179,19 @@ int generate_or(struct _generate *generate)
     case 2:
       // or rax, r8: 0x4c 0x09 0xc0
       generate_code(generate, 3, 0x4c, 0x09, 0xc0);
+      break;
     case 3:
       // or r8, r9: 0x4d 0x09 0xc8
       generate_code(generate, 3, 0x4d, 0x09, 0xc8);
+      break;
     case 4:
       // or r9, r10: 0x4d 0x09 0xd1
       generate_code(generate, 3, 0x4d, 0x09, 0xd1);
+      break;
     case 5:
       // or r10, r11: 0x4d 0x09 0xda
       generate_code(generate, 3, 0x4d, 0x09, 0xda);
+      break;
     default:
       return -1;
   }

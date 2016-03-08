@@ -173,7 +173,7 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
 
   if (error == 0)
   {
-    while (opstack_ptr != 0)
+    while (opstack_ptr > 0)
     {
       if (opstack[opstack_ptr - 1] == OP_OR) { generate_or(generate); }
       else if (opstack[opstack_ptr - 1] == OP_AND) { generate_and(generate); }
