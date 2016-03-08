@@ -332,9 +332,9 @@ static int generate_set_reg(struct _generate *generate, int value)
     }
       else
     {
-      // add r15, 1: 0x49 0x83 0xc7 0x01
-      generate_code(generate, 4, 0x49, 0x83, 0xc0 + generate->reg - 1, 0x01);
-      return 4;
+      // mov r8, 1: 0x41 0xb8 0x01 0x00 0x00 0x00
+      generate_code(generate, 6, 0x41, 0xb8 + generate->reg - 1, 0x01, 0x00, 0x00, 0x00);
+      return 6;
     }
   }
 }
