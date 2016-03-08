@@ -33,10 +33,7 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
   int error = 0;
 
   token_type = tokens_next(tokens);
-  if (token_type != TOKEN_PAREN_OPEN)
-  {
-    return 1;
-  }
+  if (token_type != TOKEN_PAREN_OPEN) { return 1; }
 
   token_type = tokens_next(tokens);
 
@@ -59,10 +56,7 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
   }
 
   token_type = tokens_next(tokens);
-  if (token_type != TOKEN_PAREN_CLOSE)
-  {
-    return 1;
-  }
+  if (token_type != TOKEN_PAREN_CLOSE) { return 1; }
 
   generate->reg++;
 
@@ -76,7 +70,8 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
   int not = 0;
   int opstack[2];
   int opstack_ptr = 0;
-  int command_count = 0;
+  //int command_count = 0;
+  int pieces = 0;
 
   while(1)
   {
@@ -90,46 +85,62 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
       else
     if (strcmp(tokens->next, "startswith") == 0)
     {
+      if ((pieces & 1) != 0) { error = 1; break; }
       error = compile_function(generate, tokens, FUNCTION_STARTSWITH, not);
+      pieces++;
       not = 0;
     }
       else
     if (strcmp(tokens->next, "endswith") == 0)
     {
+      if ((pieces & 1) != 0) { error = 1; break; }
       error = compile_function(generate, tokens, FUNCTION_ENDSWITH, not);
+      pieces++;
       not = 0;
     }
       else
     if (strcmp(tokens->next, "equals") == 0)
     {
+      if ((pieces & 1) != 0) { error = 1; break; }
       error = compile_function(generate, tokens, FUNCTION_EQUALS, not);
+      pieces++;
       not = 0;
     }
       else
     if (strcmp(tokens->next, "contains") == 0)
     {
+      if ((pieces & 1) != 0) { error = 1; break; }
       error = compile_function(generate, tokens, FUNCTION_CONTAINS, not);
+      pieces++;
       not = 0;
     }
       else
     if (strcmp(tokens->next, "and") == 0)
     {
+      if ((pieces & 1) != 1) { error = 1; break; }
       opstack[opstack_ptr++] = OP_AND;
+#if 0
       if (command_count == 0)
       {
         error = 1;
         break;
       }
+#endif
+      pieces++;
     }
       else
     if (strcmp(tokens->next, "or") == 0)
     {
+      if ((pieces & 1) != 1) { error = 1; break; }
       opstack[opstack_ptr++] = OP_OR;
+#if 0
       if (command_count == 0)
       {
         error = 1;
         break;
       }
+#endif
+      pieces++;
     }
       else
     {
@@ -138,8 +149,37 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
 
     if (error == 1) { break; }
 
+    if ((pieces & 1) == 1 && opstack_ptr != 0)
+    {
+      if (opstack[opstack_ptr - 1] == OP_AND)
+      {
+        generate_and(generate);
+        opstack_ptr--;
+      }
+    }
+
+    if ((pieces & 0) == 0 && opstack_ptr == 2)
+    {
+      if (opstack[opstack_ptr - 1] == OP_OR)
+      {
+        generate_or(generate);
+        opstack_ptr--;
+      }
+    }
+
     //printf("%d) %s\n", token_type, tokens.next);
-    if (token_type == TOKEN_ERROR) { break; }
+    if (token_type == TOKEN_ERROR) { error = 1; break; }
+  }
+
+  if (error == 0)
+  {
+    while (opstack_ptr != 0)
+    {
+      if (opstack[opstack_ptr - 1] == OP_OR) { generate_or(generate); }
+      else if (opstack[opstack_ptr - 1] == OP_AND) { generate_and(generate); }
+
+      opstack_ptr--;
+    }
   }
 
   return error == 0 ? 0: -1;
