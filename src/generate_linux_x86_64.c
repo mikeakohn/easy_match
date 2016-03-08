@@ -143,6 +143,60 @@ int generate_contains(struct _generate *generate, char *match, int not)
   return 0;
 }
 
+int generate_and(struct _generate *generate)
+{
+  switch(generate->reg)
+  {
+    case 2:
+      // and rax, r8: 0x4c 0x21 0xc0
+      generate_code(generate, 3, 0x4c, 0x21, 0xc0);
+      break;
+    case 3:
+      // and r8, r9: 0x4d 0x21 0xc8
+      generate_code(generate, 3, 0x4d, 0x21, 0xc8);
+      break;
+    case 4:
+      // and r9, r10: 0x4d 0x21 0xd1
+      generate_code(generate, 3, 0x4d, 0x21, 0xd1);
+      break;
+    case 5:
+      // and r10, r11: 0x4d 0x21 0xda
+      generate_code(generate, 3, 0x4d, 0x21, 0xda);
+      break;
+    default:
+      return -1;
+  }
+
+  generate->reg--;
+
+  return 0;
+}
+
+int generate_or(struct _generate *generate)
+{
+  switch(generate->reg)
+  {
+    case 2:
+      // or rax, r8: 0x4c 0x09 0xc0
+      generate_code(generate, 3, 0x4c, 0x09, 0xc0);
+    case 3:
+      // or r8, r9: 0x4d 0x09 0xc8
+      generate_code(generate, 3, 0x4d, 0x09, 0xc8);
+    case 4:
+      // or r9, r10: 0x4d 0x09 0xd1
+      generate_code(generate, 3, 0x4d, 0x09, 0xd1);
+    case 5:
+      // or r10, r11: 0x4d 0x09 0xda
+      generate_code(generate, 3, 0x4d, 0x09, 0xda);
+    default:
+      return -1;
+  }
+
+  generate->reg--;
+
+  return 0;
+}
+
 int generate_finish(struct _generate *generate)
 {
   // inc eax: 0xff 0xc0
@@ -250,17 +304,38 @@ static int generate_code(struct _generate *generate, uint8_t len, ...)
 
 static int generate_set_reg(struct _generate *generate, int value)
 {
-  if (value == 0)
+  if (generate->reg > 4) { return -1; }
+
+  if (generate->reg == 0)
   {
-    // xor eax, eax: 0x31 0xc0
-    generate_code(generate, 2, 0x31, 0xc0);
-    return 2;
+    if (value == 0)
+    {
+      // xor eax, eax: 0x31 0xc0
+      generate_code(generate, 2, 0x31, 0xc0);
+      return 2;
+    }
+      else
+    {
+      // mov eax, 1: 0xb8 0x01 0x00 0x00 0x00
+      generate_code(generate, 5, 0xb8, 0x01, 0x00, 0x00, 0x00);
+      return 5;
+    }
   }
     else
   {
-    // mov eax, 1: 0xb8 0x01 0x00 0x00 0x00
-    generate_code(generate, 5, 0xb8, 0x01, 0x00, 0x00, 0x00);
-    return 5;
+    if (value == 0)
+    {
+      uint8_t reg_bytes[] = { 0xc0, 0xc9, 0xd2, 0xdb, 0xe4, 0xed, 0xf6, 0xff };
+      // xor r8,r8: 0x4d 0x31 0xc0
+      generate_code(generate, 3, 0x4d, 0x31, reg_bytes[generate->reg -1 ]);
+      return 3;
+    }
+      else
+    {
+      // add r15, 1: 0x49 0x83 0xc7 0x01
+      generate_code(generate, 4, 0x49, 0x83, 0xc0 + generate->reg - 1, 0x01);
+      return 4;
+    }
   }
 }
 
@@ -270,6 +345,9 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
   int jmp_exit_count = 0;
   int distance;
   int n, i;
+
+  // Reg must be rax, r8, r9, r10, r11
+  if (generate->reg > 4) { return -1; }
 
   n = 0;
   while (n < len)
