@@ -22,7 +22,7 @@
 //#define MATCH_OPTION_NONE 0
 //#define MATCH_OPTION_RESTORE_RDI 1
 
-static int generate_strlen(struct _generate *generate, int len, int equals);
+static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
 static int generate_set_reg(struct _generate *generate, int value);
@@ -67,7 +67,7 @@ int generate_startswith(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, STRLEN_ATLEAST);
+  generate_check_len(generate, len, STRLEN_ATLEAST);
   if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   return 0;
@@ -77,7 +77,7 @@ int generate_endswith(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, STRLEN_ATLEAST);
+  generate_check_len(generate, len, STRLEN_ATLEAST);
   if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
 
   if (generate_match(generate, match, len, not) == -1) { return -1; }
@@ -93,7 +93,7 @@ int generate_equals(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
-  generate_strlen(generate, len, STRLEN_EQUALS);
+  generate_check_len(generate, len, STRLEN_EQUALS);
   if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   return 0;
@@ -105,22 +105,79 @@ int generate_contains(struct _generate *generate, char *match, int not)
   int label;
   int distance;
 
-  generate_strlen(generate, len, STRLEN_ATLEAST);
+  generate_check_len(generate, len, STRLEN_ATLEAST);
 
   // mov rcx, rdi: 0x48 0x89 0xf9
   //generate_code(generate, 3, 0x48, 0x89, 0xf9);
 
-  if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
+  // mov ecx, esi: 0x89 0xf1
+  generate_code(generate, 2, 0x89, 0xf1);
+
+  if (len < 128)
+  {
+    // sub ecx, 1: 0x83 0xe9 0x01
+    generate_code(generate, 3, 0x83, 0xe9, len);
+  }
+    else
+  {
+    // sub ecx, 128: 0x81 0xe9 0x80 0x00 0x00 0x00
+    generate_code(generate, 6, 0x81, 0xe9,
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+
+  //if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
 
   label = generate->ptr;
 
   if (generate_match(generate, match, len, not) == -1) { return -1; }
 
-  // dec rdi: 0x48 0xff 0xcf
-  generate_code(generate, 3, 0x48, 0xff, 0xcf);
+  // inc rdi: 0x48 0xff 0xc7
+  generate_code(generate, 3, 0x48, 0xff, 0xc7);
+
+  switch(generate->reg)
+  {
+    case 0:
+      // test eax, eax: 0x85 0xc0
+      generate_code(generate, 2, 0x85, 0xc0);
+      break;
+    case 1:
+      // test r8, r8: 0x4d 0x85 0xc0
+      generate_code(generate, 3, 0x4d, 0x85, 0xc0);
+      break;
+    case 2:
+      // test r9, r9: 0x4d 0x85 0xc9
+      generate_code(generate, 3, 0x4d, 0x85, 0xc9);
+      break;
+    case 3:
+      // test r10, r10: 0x4d 0x85 0xd2
+      generate_code(generate, 3, 0x4d, 0x85, 0xd2);
+      break;
+    case 4:
+      // test r11, r11: 0x4d 0x85 0xdb
+      generate_code(generate, 3, 0x4d, 0x85, 0xdb);
+      break;
+    default:
+      return -1;
+  }
+
+  if (not == 0)
+  {
+    // jne skip_exit: 0x75, 0x00
+    generate_code(generate, 2, 0x75, 0x00);
+  }
+    else
+  {
+    // je skip_exit: 0x74, 0x00
+    generate_code(generate, 2, 0x74, 0x00);
+  }
+
+  int label_skip_exit = generate->ptr;
+
+  // dec ecx: 0xff 0xc9
+  generate_code(generate, 2, 0xff, 0xc9);
 
   // cmp [rsp-16], rdi: 0x48 0x39 0x7c 0x24 0xf0
-  generate_code(generate, 5, 0x48, 0x39, 0x7c, 0x24, 0xf0);
+  //generate_code(generate, 5, 0x48, 0x39, 0x7c, 0x24, 0xf0);
 
   distance = generate->ptr - label;
 
@@ -128,17 +185,25 @@ int generate_contains(struct _generate *generate, char *match, int not)
   {
     distance = -(distance + 2);
 
-    // jne label: 0x75 label
+    // jnz label: 0x75 label
     generate_code(generate, 2, 0x75, distance);
   }
     else
   {
     distance = -(distance + 3);
 
-    // jne label: 0x0f 0x85 label
+    // jnz label: 0x0f 0x85 label
     generate_code(generate, 3, 0x0f, 0x85,
       distance & 0xff, (distance >> 8) & 0xff);
   }
+
+  distance = generate->ptr - label_skip_exit;
+  generate->code[label_skip_exit - 1] = distance;
+
+  // Restore rdi
+
+  // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
 
   return 0;
 }
@@ -222,7 +287,7 @@ int generate_finish(struct _generate *generate)
   return 0;
 }
 
-static int generate_strlen(struct _generate *generate, int len, int equals)
+static int generate_check_len(struct _generate *generate, int len, int equals)
 {
   if (len < 128)
   {
