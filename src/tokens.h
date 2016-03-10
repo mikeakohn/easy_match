@@ -19,6 +19,8 @@
 #define TOKEN_PAREN_OPEN 2
 #define TOKEN_PAREN_CLOSE 3
 #define TOKEN_STRING 4
+#define TOKEN_COMMA 5
+#define TOKEN_NUMBER 6
 
 struct _tokens
 {

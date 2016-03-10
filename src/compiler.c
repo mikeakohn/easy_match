@@ -24,16 +24,29 @@
 
 #define FUNCTION_STARTSWITH 0
 #define FUNCTION_ENDSWITH 1
-#define FUNCTION_EQUALS 2
-#define FUNCTION_CONTAINS 3
+#define FUNCTION_MATCH_AT 2
+#define FUNCTION_EQUALS 3
+#define FUNCTION_CONTAINS 4
 
 static int compile_function(struct _generate *generate, struct _tokens *tokens, int function, int not)
 {
   int token_type;
   int error = 0;
+  int index = 0;
 
   token_type = tokens_next(tokens);
   if (token_type != TOKEN_PAREN_OPEN) { return 1; }
+
+  if (function == FUNCTION_MATCH_AT)
+  {
+    token_type = tokens_next(tokens);
+    if (token_type != TOKEN_COMMA) { return 1; }
+
+    token_type = tokens_next(tokens);
+    if (token_type != TOKEN_NUMBER) { return 1; }
+
+    index = atoi(tokens->next);
+  }
 
   token_type = tokens_next(tokens);
 
@@ -44,6 +57,9 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
       break;
     case FUNCTION_ENDSWITH:
       if (generate_endswith(generate, tokens->next, not) != 0) { return 1; }
+      break;
+    case FUNCTION_MATCH_AT:
+      if (generate_match_at(generate, tokens->next, index, not) != 0) { return 1; }
       break;
     case FUNCTION_EQUALS:
       if (generate_equals(generate, tokens->next, not) != 0) { return 1; }
@@ -92,6 +108,14 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
     }
       else
     if (strcmp(tokens->next, "endswith") == 0)
+    {
+      if ((pieces & 1) != 0) { error = 1; break; }
+      error = compile_function(generate, tokens, FUNCTION_ENDSWITH, not);
+      pieces++;
+      not = 0;
+    }
+      else
+    if (strcmp(tokens->next, "match_at") == 0)
     {
       if ((pieces & 1) != 0) { error = 1; break; }
       error = compile_function(generate, tokens, FUNCTION_ENDSWITH, not);
@@ -207,6 +231,7 @@ match_t compiler_generate(char *code)
 
     if (strcmp(tokens.next, "startswith") == 0) { generate.startswith++; }
     else if (strcmp(tokens.next, "endswith") == 0) { generate.endswith++; }
+    else if (strcmp(tokens.next, "match_at") == 0) { generate.match_at++; }
     else if (strcmp(tokens.next, "equals") == 0) { generate.equals++; }
     else if (strcmp(tokens.next, "contains") == 0) { generate.contains++; }
     else if (strcmp(tokens.next, "and") == 0) { generate.and++; }
@@ -218,6 +243,7 @@ match_t compiler_generate(char *code)
 #if 0
   printf("startswith: %d\n", generate.startswith);
   printf("  endswith: %d\n", generate.endswith);
+  printf("  match_at: %d\n", generate.match_at);
   printf("    equals: %d\n", generate.equals);
   printf("  contains: %d\n", generate.contains);
   printf("       and: %d\n", generate.and);

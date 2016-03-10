@@ -90,6 +90,43 @@ int generate_endswith(struct _generate *generate, char *match, int not)
   return 0;
 }
 
+int generate_match_at(struct _generate *generate, char *match, int index, int not)
+{
+  int len = strlen(match) + index;
+
+  // Save rdi
+  // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
+
+  if (index < 128)
+  {
+    // add rdi, 1: 0x48 0x83 0xc7 0x01
+    generate_code(generate, 4, 0x48, 0x83, 0xc7, index);
+  }
+    else
+  if (index < 32768)
+  {
+    // add rdi, 128: 0x48 0x81 0xc7 0x80 0x00 0x00 0x00
+    generate_code(generate, 7, 0x48, 0x81, 0xc7,
+      index & 0xff, (index >> 8) & 0xff,
+      (index >> 16) & 0xff, (index >> 24) & 0xff);
+  }
+    else
+  {
+    return -1;
+  }
+
+
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  // Restore rdi.
+  // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+
+  return 0;
+}
+
 int generate_equals(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
@@ -105,6 +142,10 @@ int generate_contains(struct _generate *generate, char *match, int not)
   int len = strlen(match);
   int label;
   int distance;
+
+  // Save rdi
+  // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
+  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
 
   generate_set_reg(generate, not);
 

@@ -21,6 +21,7 @@ struct _generate
   int reg;
   int startswith;
   int endswith;
+  int match_at;
   int equals;
   int contains;
   int and;
@@ -32,6 +33,7 @@ struct _generate
 int generate_init(struct _generate *generate, uint8_t *code);
 int generate_startswith(struct _generate *generate, char *match, int not);
 int generate_endswith(struct _generate *generate, char *match, int not);
+int generate_match_at(struct _generate *generate, char *match, int index, int not);
 int generate_equals(struct _generate *generate, char *match, int not);
 int generate_contains(struct _generate *generate, char *match, int not);
 int generate_and(struct _generate *generate);

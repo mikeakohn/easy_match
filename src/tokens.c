@@ -56,12 +56,26 @@ int tokens_next(struct _tokens *tokens)
       break;
     }
 
+    // Check for comma
+    if (*code == ',')
+    {
+      tokens->next[ptr++] = ',';
+      token_type = TOKEN_COMMA;
+      code++; 
+      break;
+    }
+
     // If there is no parenthesis then this must be either a quote or
     // keyword (or possibly an illegal character).
     if (*code == '\'')
     {
       token_type = TOKEN_STRING;
       code++;
+    }
+      else
+    if (*code >= '0' && *code <= '9')
+    {
+      token_type = TOKEN_NUMBER;
     }
       else
     {
@@ -75,6 +89,15 @@ int tokens_next(struct _tokens *tokens)
       {
         if (!((*code >= 'a' && *code <= 'z') ||
              (*code >= 'A' && *code <= 'Z')))
+        {
+          break;
+        }
+      }
+
+      // This is a number and the next character is not a number so stop.
+      if (token_type == TOKEN_NUMBER)
+      {
+        if (!(*code >= '0' && *code <= '9'))
         {
           break;
         }
