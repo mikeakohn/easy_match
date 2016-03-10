@@ -106,6 +106,8 @@ int generate_contains(struct _generate *generate, char *match, int not)
   int label;
   int distance;
 
+  generate_set_reg(generate, not);
+
   generate_check_len(generate, len, STRLEN_ATLEAST);
 
   // mov rcx, rdi: 0x48 0x89 0xf9
@@ -200,6 +202,32 @@ int generate_contains(struct _generate *generate, char *match, int not)
 
   distance = generate->ptr - label_skip_exit;
   generate->code[label_skip_exit - 1] = distance;
+
+  // strlen() check should jump here.
+  distance = generate->ptr - generate->strlen_ptr;
+
+  if (distance < 128)
+  {
+    generate->code[generate->strlen_ptr - 1] = distance;
+  }
+    else
+  {
+    if (generate->strlen_is_far == 0)
+    {
+      generate_insert(generate, generate->strlen_ptr, 4);
+
+      generate->strlen_ptr += 4;
+      distance = generate->ptr - generate->strlen_ptr;
+
+      generate->code[generate->strlen_ptr - 6] = 0x0f;
+      generate->code[generate->strlen_ptr - 5] = 0x8c;
+    }
+
+    generate->code[generate->strlen_ptr - 4] = distance & 0xff;
+    generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
+    generate->code[generate->strlen_ptr - 2] = (distance >> 16) & 0xff;
+    generate->code[generate->strlen_ptr - 1] = (distance >> 24) & 0xff;
+  }
 
   // Restore rdi
 
@@ -590,6 +618,7 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
   if (distance < 128)
   {
     generate->code[generate->strlen_ptr - 1] = distance;
+    generate->strlen_is_far = 0;
   }
     else
   {
@@ -613,6 +642,8 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
     generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
     generate->code[generate->strlen_ptr - 2] = (distance >> 16) & 0xff;
     generate->code[generate->strlen_ptr - 1] = (distance >> 24) & 0xff;
+
+    generate->strlen_is_far = 0;
   }
 
   n = generate_set_reg(generate, not);
