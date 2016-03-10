@@ -40,15 +40,16 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
   if (function == FUNCTION_MATCH_AT)
   {
     token_type = tokens_next(tokens);
-    if (token_type != TOKEN_COMMA) { return 1; }
-
-    token_type = tokens_next(tokens);
     if (token_type != TOKEN_NUMBER) { return 1; }
 
     index = atoi(tokens->next);
+
+    token_type = tokens_next(tokens);
+    if (token_type != TOKEN_COMMA) { return 1; }
   }
 
   token_type = tokens_next(tokens);
+  if (token_type != TOKEN_STRING) { return 1; }
 
   switch(function)
   {
@@ -118,7 +119,7 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
     if (strcmp(tokens->next, "match_at") == 0)
     {
       if ((pieces & 1) != 0) { error = 1; break; }
-      error = compile_function(generate, tokens, FUNCTION_ENDSWITH, not);
+      error = compile_function(generate, tokens, FUNCTION_MATCH_AT, not);
       pieces++;
       not = 0;
     }

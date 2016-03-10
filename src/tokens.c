@@ -88,7 +88,8 @@ int tokens_next(struct _tokens *tokens)
       if (token_type == TOKEN_KEYWORD)
       {
         if (!((*code >= 'a' && *code <= 'z') ||
-             (*code >= 'A' && *code <= 'Z')))
+             (*code >= 'A' && *code <= 'Z') ||
+             *code == '_'))
         {
           break;
         }

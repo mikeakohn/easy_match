@@ -92,12 +92,16 @@ int generate_endswith(struct _generate *generate, char *match, int not)
 
 int generate_match_at(struct _generate *generate, char *match, int index, int not)
 {
-  int len = strlen(match) + index;
+  int len = strlen(match);
 
   // Save rdi
   // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
   generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
 
+  if (index == 0)
+  {
+  }
+    else
   if (index < 128)
   {
     // add rdi, 1: 0x48 0x83 0xc7 0x01
@@ -116,13 +120,15 @@ int generate_match_at(struct _generate *generate, char *match, int index, int no
     return -1;
   }
 
-
-  generate_check_len(generate, len, STRLEN_ATLEAST);
+  generate_check_len(generate, len + index, STRLEN_ATLEAST);
   if (generate_match(generate, match, len, not) == -1) { return -1; }
 
-  // Restore rdi.
-  // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
-  generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+  if (index != 0)
+  {
+    // Restore rdi.
+    // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+    generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+  }
 
   return 0;
 }
