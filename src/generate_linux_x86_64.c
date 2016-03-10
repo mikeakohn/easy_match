@@ -26,6 +26,7 @@ static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_code(struct _generate *generate, uint8_t opcodes, ...);
 static int generate_set_reg(struct _generate *generate, int value);
+static int generate_insert(struct _generate *generate, int offset, int len);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code)
@@ -408,12 +409,27 @@ static int generate_set_reg(struct _generate *generate, int value)
   }
 }
 
+static int generate_insert(struct _generate *generate, int offset, int len)
+{
+  int i = generate->ptr;
+
+  while(i >= offset)
+  {
+    generate->code[i + len] = generate->code[i];
+    i--;
+  }
+
+  generate->ptr += len;
+
+  return 0;
+}
+
 static int generate_match(struct _generate *generate, char *match, int len, int not)
 {
   int jmp_exit[4096];
   int jmp_exit_count = 0;
   int distance;
-  int n, i;
+  int n;
 
   // Reg must be rax, r8, r9, r10, r11
   if (generate->reg > 4) { return -1; }
@@ -555,14 +571,8 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
     }
       else
     {
-      i = generate->ptr;
-      while(i >= jmp_exit[n])
-      {
-        generate->code[i + 4] = generate->code[i];
-        i--;
-      }
+      generate_insert(generate, jmp_exit[n], 4);
 
-      generate->ptr += 4;
       jmp_exit[n] += 4;
       distance = generate->ptr - jmp_exit[n];
 
@@ -583,14 +593,8 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
   }
     else
   {
-    i = generate->ptr;
-    while(i >= generate->strlen_ptr)
-    {
-      generate->code[i + 4] = generate->code[i];
-      i--;
-    }
+    generate_insert(generate, generate->strlen_ptr, 4);
 
-    generate->ptr += 4;
     generate->strlen_ptr += 4;
     distance = generate->ptr - generate->strlen_ptr;
 

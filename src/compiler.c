@@ -191,7 +191,7 @@ match_t compiler_generate(char *code)
   struct _tokens tokens;
   struct _generate generate;
   int token_type;
-  int error;
+  int error = 0;
 
   memset(&generate, 0, sizeof(generate));
 
