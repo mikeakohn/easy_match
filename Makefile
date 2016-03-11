@@ -10,12 +10,13 @@ test_tokens:
 	$(CC) -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
 
 speed:
-	$(CC) -o compare_startswith tests/compare_startswith.c build/*.o -Isrc -lpcre $(CFLAGS)
-	$(CC) -o compare_endswith tests/compare_endswith.c build/*.o -Isrc -lpcre $(CFLAGS)
+	$(CC) -o compare_starts_with tests/compare_starts_with.c build/*.o -Isrc -lpcre $(CFLAGS)
+	$(CC) -o compare_ends_with tests/compare_ends_with.c build/*.o -Isrc -lpcre $(CFLAGS)
 
 clean:
 	@rm -f build/*.o
-	@rm -f test_tokens compare_startswith compare_endswith
+	@rm -f easy_match
+	@rm -f test_tokens compare_starts_with compare_ends_with
 
 
 

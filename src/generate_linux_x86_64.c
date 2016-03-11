@@ -64,7 +64,7 @@ int generate_init(struct _generate *generate, uint8_t *code)
   return 0;
 }
 
-int generate_startswith(struct _generate *generate, char *match, int not)
+int generate_starts_with(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
@@ -74,7 +74,7 @@ int generate_startswith(struct _generate *generate, char *match, int not)
   return 0;
 }
 
-int generate_endswith(struct _generate *generate, char *match, int not)
+int generate_ends_with(struct _generate *generate, char *match, int not)
 {
   int len = strlen(match);
 
