@@ -54,6 +54,7 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
 
   if (token_type == TOKEN_KEYWORD)
   {
+    uint64_t value;
     int size;
 
     len = 0;
@@ -71,11 +72,22 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
 
     while(1)
     {
-      token_type = tokens_next(tokens);
-      if (token_type != TOKEN_NUMBER) { return 1; }
-
-      uint64_t value = strtoll(tokens->next, NULL, 10);
       int n;
+
+      token_type = tokens_next(tokens);
+      if (token_type == TOKEN_NUMBER)
+      {
+        value = strtoll(tokens->next, NULL, 10);
+      }
+        else
+      if (token_type == TOKEN_HEX)
+      {
+        value = strtoll(tokens->next, NULL, 16);
+      }
+        else
+      {
+        return 1;
+      }
 
       for (n = 0; n < size; n++)
       {

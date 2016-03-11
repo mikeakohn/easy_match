@@ -21,6 +21,7 @@
 #define TOKEN_STRING 4
 #define TOKEN_COMMA 5
 #define TOKEN_NUMBER 6
+#define TOKEN_HEX 7
 
 struct _tokens
 {

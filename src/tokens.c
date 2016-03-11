@@ -99,7 +99,26 @@ int tokens_next(struct _tokens *tokens)
       // This is a number and the next character is not a number so stop.
       if (token_type == TOKEN_NUMBER)
       {
+        if (ptr == 1 && *code == 'x')
+        {
+          token_type = TOKEN_HEX;
+          ptr = 0;
+          code++;
+          continue;
+        }
+          else
         if (!(*code >= '0' && *code <= '9'))
+        {
+          break;
+        }
+      }
+
+      // This is a number and the next character is not a number so stop.
+      if (token_type == TOKEN_HEX)
+      {
+        if (!((*code >= '0' && *code <= '9') ||
+              (*code >='a' && *code <='f' ) ||
+              (*code >='A' && *code <='F' )))
         {
           break;
         }
