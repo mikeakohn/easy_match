@@ -89,6 +89,7 @@ int tokens_next(struct _tokens *tokens)
       {
         if (!((*code >= 'a' && *code <= 'z') ||
              (*code >= 'A' && *code <= 'Z') ||
+             (*code >= '0' && *code <= '9') ||
              *code == '_'))
         {
           break;

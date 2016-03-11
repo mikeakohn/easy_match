@@ -31,11 +31,11 @@ struct _generate
 };
 
 int generate_init(struct _generate *generate, uint8_t *code);
-int generate_starts_with(struct _generate *generate, char *match, int not);
-int generate_ends_with(struct _generate *generate, char *match, int not);
-int generate_match_at(struct _generate *generate, char *match, int index, int not);
-int generate_equals(struct _generate *generate, char *match, int not);
-int generate_contains(struct _generate *generate, char *match, int not);
+int generate_starts_with(struct _generate *generate, char *match, int len, int not);
+int generate_ends_with(struct _generate *generate, char *match, int len, int not);
+int generate_match_at(struct _generate *generate, char *match, int len, int index, int not);
+int generate_equals(struct _generate *generate, char *match, int len, int not);
+int generate_contains(struct _generate *generate, char *match, int len, int not);
 int generate_and(struct _generate *generate);
 int generate_or(struct _generate *generate);
 int generate_finish(struct _generate *generate);

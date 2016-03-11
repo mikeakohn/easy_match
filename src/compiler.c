@@ -33,6 +33,8 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
   int token_type;
   int error = 0;
   int index = 0;
+  int len;
+  char *match;
 
   token_type = tokens_next(tokens);
   if (token_type != TOKEN_PAREN_OPEN) { return 1; }
@@ -49,24 +51,74 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
   }
 
   token_type = tokens_next(tokens);
-  if (token_type != TOKEN_STRING) { return 1; }
+
+  if (token_type == TOKEN_KEYWORD)
+  {
+    int size;
+
+    len = 0;
+
+    if (strcmp(tokens->next, "int8") == 0) { size = 1; }
+    else if (strcmp(tokens->next, "int16") == 0) { size = 2; }
+    else if (strcmp(tokens->next, "int32") == 0) { size = 4; }
+    else if (strcmp(tokens->next, "int64") == 0) { size = 8; }
+    else { return -1; }
+
+    token_type = tokens_next(tokens);
+    if (token_type != TOKEN_PAREN_OPEN) { return 1; }
+
+    match = alloca(4096);
+
+    while(1)
+    {
+      token_type = tokens_next(tokens);
+      if (token_type != TOKEN_NUMBER) { return 1; }
+
+      uint64_t value = strtoll(tokens->next, NULL, 10);
+      int n;
+
+      for (n = 0; n < size; n++)
+      {
+        if (len == 4096) { return 1; }
+
+        match[len++] = value & 0xff;
+        value = value >> 8;
+      }
+
+      if (value != 0) { return 1; }
+
+      token_type = tokens_next(tokens);
+      if (token_type == TOKEN_PAREN_CLOSE) { break; }
+      if (token_type != TOKEN_COMMA) { return 1; }
+    }
+  }
+    else
+  if (token_type == TOKEN_STRING)
+  {
+    match = tokens->next;
+    len = strlen(match);
+  }
+    else
+  {
+    return 1;
+  }
 
   switch(function)
   {
     case FUNCTION_STARTS_WITH:
-      if (generate_starts_with(generate, tokens->next, not) != 0) { return 1; }
+      if (generate_starts_with(generate, match, len, not) != 0) { return 1; }
       break;
     case FUNCTION_ENDS_WITH:
-      if (generate_ends_with(generate, tokens->next, not) != 0) { return 1; }
+      if (generate_ends_with(generate, match, len, not) != 0) { return 1; }
       break;
     case FUNCTION_MATCH_AT:
-      if (generate_match_at(generate, tokens->next, index, not) != 0) { return 1; }
+      if (generate_match_at(generate, match, len, index, not) != 0) { return 1; }
       break;
     case FUNCTION_EQUALS:
-      if (generate_equals(generate, tokens->next, not) != 0) { return 1; }
+      if (generate_equals(generate, match, len, not) != 0) { return 1; }
       break;
     case FUNCTION_CONTAINS:
-      if (generate_contains(generate, tokens->next, not) != 0) { return 1; }
+      if (generate_contains(generate, match, len, not) != 0) { return 1; }
       break;
     default:
       return 1;
