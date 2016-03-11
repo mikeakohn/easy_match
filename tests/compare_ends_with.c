@@ -42,7 +42,8 @@ union _perftime
 
 int main(int argc, char *argv[])
 {
-  match_with_len_t match;
+  match_t match;
+  match_with_len_t match_with_len;
   FILE *in;
   int *lines;
   int *lines_len;
@@ -87,9 +88,17 @@ int main(int argc, char *argv[])
 
   regex_extra = pcre_study(regex_compiled, 0, &regex_error);
 
-  match = compiler_generate(argv[2], OPTION_WITH_LEN);
+  match = compiler_generate(argv[2], OPTION_NONE);
 
   if (match == NULL)
+  {
+    printf("Error compiling.\n");
+    return 0;
+  }
+
+  match_with_len = compiler_generate(argv[2], OPTION_WITH_LEN);
+
+  if (match_with_len == NULL)
   {
     printf("Error compiling.\n");
     return 0;
@@ -148,7 +157,19 @@ int main(int argc, char *argv[])
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
-    int result = match(buffer + lines[i], lines_len[i]);
+    int result = match(buffer + lines[i]);
+    if (result == 1) { count++; }
+  }
+  TIMER_STOP
+  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+
+  printf("Easy Match (with len)\n");
+
+  count = 0;
+  TIMER_START
+  for (i = 0; i < line_count; i++)
+  {
+    int result = match_with_len(buffer + lines[i], lines_len[i]);
     if (result == 1) { count++; }
   }
   TIMER_STOP
@@ -193,6 +214,7 @@ int main(int argc, char *argv[])
   pcre_free(regex_compiled);
 
   compiler_free(match);
+  compiler_free(match_with_len);
 
   free(buffer);
   free(lines);
