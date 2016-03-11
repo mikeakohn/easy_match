@@ -220,7 +220,13 @@ match_t compiler_generate(char *code)
 
   memset(&generate, 0, sizeof(generate));
 
-  match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+  match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+  if (match == MAP_FAILED)
+  {
+    perror("mmap() failed");
+    return NULL;
+  }
 
   generate_init(&generate, (uint8_t *)match);
   tokens_init(&tokens, code);
