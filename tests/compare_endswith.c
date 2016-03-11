@@ -71,6 +71,11 @@ int main(int argc, char *argv[])
   regex = argv[3];
   startswith = argv[4];
 
+  int where;
+  int status = pcre_config(PCRE_CONFIG_JIT, &where);
+
+  printf("config pcre_jit: status=%d where=%d\n", status, where);
+
   regex_compiled = pcre_compile(regex, 0, &regex_error, &regex_error_offset, NULL);
 
   if (regex_compiled == NULL)
@@ -106,7 +111,7 @@ int main(int argc, char *argv[])
     if (ch == EOF) { break; }
   }
 
-  buffer_len = ftell(in);
+  buffer_len = ftell(in) + 1;
   buffer = (char *)malloc(buffer_len);
   lines = (int *)malloc(line_count * sizeof(int));
   fseek(in, 0, SEEK_SET);
