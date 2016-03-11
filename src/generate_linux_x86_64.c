@@ -29,7 +29,7 @@ static int generate_set_reg(struct _generate *generate, int value);
 static int generate_insert(struct _generate *generate, int offset, int len);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
-int generate_init(struct _generate *generate, uint8_t *code)
+int generate_init(struct _generate *generate, uint8_t *code, int option)
 {
   generate->code = code;
   generate->ptr = 0;
@@ -41,25 +41,28 @@ int generate_init(struct _generate *generate, uint8_t *code)
   // xor eax, eax: 0x31  0xC0
   //generate_code(generate, 2, 0x31, 0xc0);
 
-  // mov rsi, rdi: 0x48 0x89 0xfe
-  generate_code(generate, 3, 0x48, 0x89, 0xfe);
+  if (option != 1)
+  {
+    // mov rsi, rdi: 0x48 0x89 0xfe
+    generate_code(generate, 3, 0x48, 0x89, 0xfe);
 
-  // Need to do an strlen()
+    // Need to do an strlen()
 
-  // cmp byte [rsi], 0: 0x80 0x3e 0x00
-  generate_code(generate, 3, 0x80, 0x3e, 0x00);
+    // cmp byte [rsi], 0: 0x80 0x3e 0x00
+    generate_code(generate, 3, 0x80, 0x3e, 0x00);
 
-  // jz exit: 0x74 0x05
-  generate_code(generate, 2, 0x74, 0x05);
+    // jz exit: 0x74 0x05
+    generate_code(generate, 2, 0x74, 0x05);
 
-  // inc rsi: 0x48 0xff 0xc6
-  generate_code(generate, 3, 0x48, 0xff, 0xc6);
+    // inc rsi: 0x48 0xff 0xc6
+    generate_code(generate, 3, 0x48, 0xff, 0xc6);
 
-  // jmp repeat: 0xEB 0xF6
-  generate_code(generate, 2, 0xeb, 0xf6);
+    // jmp repeat: 0xEB 0xF6
+    generate_code(generate, 2, 0xeb, 0xf6);
 
-  // sub rsi, rdi: 0x48 0x29 0xfe
-  generate_code(generate, 3, 0x48, 0x29, 0xfe);
+    // sub rsi, rdi: 0x48 0x29 0xfe
+    generate_code(generate, 3, 0x48, 0x29, 0xfe);
+  }
 
   return 0;
 }

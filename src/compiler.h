@@ -12,10 +12,14 @@
 #ifndef _COMPILER_H
 #define _COMPILER_H
 
-typedef int (*match_t)(char*);
+#define OPTION_NONE 0
+#define OPTION_WITH_LEN 1
 
-match_t compiler_generate(char *code);
-void compiler_free(match_t function);
+typedef int (*match_t)(char*);
+typedef int (*match_with_len_t)(char*, int);
+
+void *compiler_generate(char *code, int option);
+void compiler_free(void *function);
 
 #endif
 

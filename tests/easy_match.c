@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     exit(0);
   }
 
-  match = compiler_generate(argv[2]);
+  match = compiler_generate(argv[2], OPTION_NONE);
 
   if (match == NULL)
   {

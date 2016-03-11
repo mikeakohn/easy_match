@@ -274,7 +274,7 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
   return error == 0 ? 0: -1;
 }
 
-match_t compiler_generate(char *code)
+void *compiler_generate(char *code, int option)
 {
   match_t match;
   struct _tokens tokens;
@@ -292,7 +292,7 @@ match_t compiler_generate(char *code)
     return NULL;
   }
 
-  generate_init(&generate, (uint8_t *)match);
+  generate_init(&generate, (uint8_t *)match, option);
   tokens_init(&tokens, code);
 
   while(1)
@@ -335,7 +335,7 @@ match_t compiler_generate(char *code)
   return match;
 }
 
-void compiler_free(match_t match)
+void compiler_free(void *match)
 {
   munmap(match, MAX_CODE_SIZE);
 }

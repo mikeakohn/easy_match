@@ -42,9 +42,10 @@ union _perftime
 
 int main(int argc, char *argv[])
 {
-  match_t match;
+  match_with_len_t match;
   FILE *in;
   int *lines;
+  int *lines_len;
   int ptr, ch;
   int line_count;
   char *buffer;
@@ -86,7 +87,7 @@ int main(int argc, char *argv[])
 
   regex_extra = pcre_study(regex_compiled, 0, &regex_error);
 
-  match = compiler_generate(argv[2]);
+  match = compiler_generate(argv[2], OPTION_WITH_LEN);
 
   if (match == NULL)
   {
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
   buffer_len = ftell(in) + 1;
   buffer = (char *)malloc(buffer_len);
   lines = (int *)malloc(line_count * sizeof(int));
+  lines_len = (int *)malloc(line_count * sizeof(int));
   fseek(in, 0, SEEK_SET);
   line_count = 0;
 
@@ -127,7 +129,9 @@ int main(int argc, char *argv[])
     if (ch == '\n' || ch == EOF)
     {
       buffer[ptr++] = 0;
-      lines[line_count++] = line_start;
+      lines[line_count] = line_start;
+      lines_len[line_count] = ptr;
+      line_count++;
 
       if (ch == EOF) { break; }
       line_start = ptr;
@@ -144,7 +148,7 @@ int main(int argc, char *argv[])
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
-    int result = match(buffer + lines[i]);
+    int result = match(buffer + lines[i], lines_len[i]);
     if (result == 1) { count++; }
   }
   TIMER_STOP
@@ -190,6 +194,7 @@ int main(int argc, char *argv[])
 
   free(buffer);
   free(lines);
+  free(lines_len);
 
   return 0;
 }
