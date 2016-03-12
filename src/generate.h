@@ -13,6 +13,7 @@
 #define _GENERATE_H
 
 #include <stdint.h>
+#include <stdarg.h>
 
 struct _generate
 {
@@ -39,6 +40,10 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
 int generate_and(struct _generate *generate);
 int generate_or(struct _generate *generate);
 int generate_finish(struct _generate *generate);
+
+// Common functions
+int generate_code(struct _generate *generate, uint8_t len, ...);
+int generate_insert(struct _generate *generate, int offset, int len);
 
 #endif
 

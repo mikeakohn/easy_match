@@ -5,7 +5,7 @@ COMPILER_PREFIX=
 DEBUG=
 CFLAGS="-Wall"
 LDFLAGS=""
-OBJECTS="tokens.o compiler.o"
+OBJECTS="tokens.o compiler.o generate.o"
 MACHINE=`uname -m`
 
 show_help()
