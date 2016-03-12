@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
   {
     printf("Couldn't open file %s\n", argv[1]);
     compiler_free(match);
-    exit(0); 
+    exit(0);
   }
 
   line_count = 0;
@@ -138,10 +138,10 @@ int main(int argc, char *argv[])
     if (ch == '\r') { continue; }
     if (ch == '\n' || ch == EOF)
     {
-      buffer[ptr++] = 0;
       lines[line_count] = line_start;
-      lines_len[line_count] = ptr;
+      lines_len[line_count] = ptr - line_start;
       line_count++;
+      buffer[ptr++] = 0;
 
       if (ch == EOF) { break; }
       line_start = ptr;
