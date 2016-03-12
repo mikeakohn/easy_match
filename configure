@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+CC=gcc
+COMPILER_PREFIX=
+DEBUG=
+CFLAGS="-Wall"
+LDFLAGS=""
+OBJECTS="tokens.o compiler.o"
+MACHINE=`uname -m`
+
+show_help()
+{
+  echo
+  echo "Usage: ./configure [options]"
+  echo
+  echo "  --help                    list options"
+  echo "  --cflags=CFLAGS           extra compiler flags"
+  echo "  --ldflags=LDFLAGS         extra linker flags"
+  echo "  --enable-debug            compile in debug code"
+  echo "  --enable-windows          cross compile for windows"
+}
+
+for option in $@; do
+
+  optval="${option#*=}"
+
+  case "$option" in
+  --help) show_help
+  ;;
+  --enable-debug) DEBUG="-DDEBUG -g"
+  ;;
+  --enable-windows) CFLAGS="$(CFLAGS) -DWINDOWS"
+  ;;
+  esac
+done
+
+if [ "${DEBUG}" = "" ]
+then
+  CFLAGS="${CFLAGS} -O3"
+else
+  CFLAGS="${CFLAGS} ${DEBUG}"
+fi
+
+OBJECTS="${OBJECTS} generate_${MACHINE}.o"
+
+echo "# Generated include file" > config.mak
+echo "# $0 $*" >> config.mak
+echo >> config.mak
+echo "CC=${COMPILER_PREFIX}${CC}" >> config.mak
+echo "COMPILER_PREFIX=${COMPILER_PREFIX}" >> config.mak
+echo "CFLAGS=${CFLAGS}" >> config.mak
+echo "LDFLAGS=${LDFLAGS}" >> config.mak
+echo "OBJECTS=${OBJECTS}" >> config.mak
+echo >> config.mak
+
+echo
+echo "Configuration:"
+echo "    Compiler: ${COMPILER_PREFIX}${CC}"
+echo "     LDFLAGS: ${LDFLAGS}"
+echo "      CFLAGS: ${CFLAGS}"
+echo "     OBJECTS: ${OBJECTS}"
+echo
+echo "Now type: make"
+
+

@@ -1,3 +1,5 @@
+include config.mak
+
 DEBUG=-DDEBUG -g
 CFLAGS=-O3 -Wall $(DEBUG)
 CC=gcc
