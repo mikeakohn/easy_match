@@ -86,7 +86,8 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  regex_extra = pcre_study(regex_compiled, 0, &regex_error);
+  //regex_extra = pcre_study(regex_compiled, 0, &regex_error);
+  regex_extra = pcre_study(regex_compiled, PCRE_STUDY_JIT_COMPILE, &regex_error);
 
   match = compiler_generate(argv[2], OPTION_NONE);
 
