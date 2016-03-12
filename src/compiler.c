@@ -267,6 +267,8 @@ void *compiler_generate(char *code, int option)
     return NULL;
   }
 
+  generate.code = (uint8_t *)match;
+
   generate_init(&generate, (uint8_t *)match, option);
   tokens_init(&tokens, code);
 
@@ -306,6 +308,13 @@ void *compiler_generate(char *code, int option)
     compiler_free(match);
     match = NULL;
   }
+
+#define DUMP_CODE
+#ifdef DUMP_CODE
+  FILE *out = fopen("/tmp/debug.bin", "wb");
+  fwrite(generate.code, 1, generate.ptr, out);
+  fclose(out);
+#endif
 
   return match;
 }

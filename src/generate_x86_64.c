@@ -28,10 +28,6 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
 {
-  generate->code = code;
-  generate->ptr = 0;
-  generate->reg = 0;
-
 #ifdef WINDOWS
   // mov [rsp-24], rcx: 0x48 0x89 0x4c 0x24 0xe8
   //generate_code(generate, 5, 0x48, 0x89, 0x4c, 0x24, 0xe8);
@@ -51,9 +47,6 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
   // mov [rsp-8], rbx: 0x48 0x89 0x5c 0x24 0xf8
   generate_code(generate, 5, 0x48, 0x89, 0x5c, 0x24, 0xf8);
-
-  // xor eax, eax: 0x31  0xC0
-  //generate_code(generate, 2, 0x31, 0xc0);
 
   if (option != 1)
   {
@@ -350,23 +343,18 @@ int generate_or(struct _generate *generate)
   return 0;
 }
 
+int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value)
+{
+  return -1;
+}
+
 int generate_finish(struct _generate *generate)
 {
-  // inc eax: 0xff 0xc0
-  //generate_code(generate, 2, 0xff, 0xc0);
-
   // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
   generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
 
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
-
-//#define DEBUG
-#ifdef DEBUG
-  FILE *out = fopen("/tmp/debug.bin", "wb");
-  fwrite(generate->code, 1, generate->ptr, out);
-  fclose(out);
-#endif
 
   return 0;
 }

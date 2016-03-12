@@ -51,6 +51,11 @@ int generate_or(struct _generate *generate)
   return -1;
 }
 
+int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value)
+{
+  return -1;
+}
+
 int generate_finish(struct _generate *generate)
 {
   return -1;
