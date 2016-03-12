@@ -32,6 +32,7 @@ struct _generate
   int or;
   int strlen_ptr;
   int strlen_is_far;
+  int dest_reg_saved;
 };
 
 int generate_init(struct _generate *generate, uint8_t *code, int option);

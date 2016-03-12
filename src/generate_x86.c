@@ -12,6 +12,7 @@
 #include "generate.h"
 
 static int generate_check_len(struct _generate *generate, int len, int equals);
+static int generate_mov_edi_end(struct _generate *generate, int len);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
@@ -66,17 +67,69 @@ int generate_starts_with(struct _generate *generate, char *match, int len, int n
 
 int generate_ends_with(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+  if (generate_mov_edi_end(generate, len) != 0) { return -1; }
+
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  // Restore edi.
+  // mov edi, [esp-12]: 0x8b 0x7c 0x24 0xf4
+  generate_code(generate, 4, 0x8b, 0x7c, 0x24, 0xf4);
+
+  return 0;
 }
 
 int generate_match_at(struct _generate *generate, char *match, int len, int index, int not)
 {
-  return -1;
+  if (index == 0)
+  {
+    // Save edi
+    if (generate->dest_reg_saved == 0)
+    {
+      // mov [esp-12], edi: 0x89 0x7c 0x24 0xf4
+      generate_code(generate, 4, 0x89, 0x7c, 0x24, 0xf4);
+
+      generate->dest_reg_saved = 1;
+    }
+  }
+    else
+  if (index < 128)
+  {
+    // add edi, 1: 0x83 0xc7 0x01
+    generate_code(generate, 3, 0x83, 0xc7, index);
+  }
+    else
+  if (index < 32768)
+  {
+    // add edi, 128: 0x81 0xc7 0x80 0x00 0x00 0x00
+    generate_code(generate, 6, 0x81, 0xc7,
+      index & 0xff, (index >> 8) & 0xff,
+      (index >> 16) & 0xff, (index >> 24) & 0xff);
+  }
+    else
+  {
+    return -1;
+  }
+
+  generate_check_len(generate, len + index, STRLEN_ATLEAST);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  if (index != 0)
+  {
+    // Restore edi.
+    // mov edi, [esp-12]: 0x8b 0x7c 0x24 0xf4
+    generate_code(generate, 4, 0x8b, 0x7c, 0x24, 0xf4);
+  }
+
+  return 0;
 }
 
 int generate_equals(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_EQUALS);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  return 0;
 }
 
 int generate_contains(struct _generate *generate, char *match, int len, int not)
@@ -143,6 +196,42 @@ static int generate_check_len(struct _generate *generate, int len, int equals)
   }
 
   generate->strlen_ptr = generate->ptr;
+
+  return 0;
+}
+
+static int generate_mov_edi_end(struct _generate *generate, int len)
+{
+  // Move rdi to the end of the string.
+
+  // Save edi
+  if (generate->dest_reg_saved == 0)
+  {
+    // mov [esp-12], edi: 0x89 0x7c 0x24 0xf4
+    generate_code(generate, 4, 0x89, 0x7c, 0x24, 0xf4);
+
+    generate->dest_reg_saved = 1;
+  }
+
+  // add edi, esi: 0x01 0xf7
+  generate_code(generate, 2, 0x01, 0xf7);
+
+  if (len < 128)
+  {
+    // sub edi, 1: 0x83 0xef 0x01
+    generate_code(generate, 3, 0x83, 0xef, len);
+  }
+    else
+  if (len < 32768)
+  {
+    // sub edi, 128: 0x81 0xef 0x80 0x00 0x00 0x00
+    generate_code(generate, 6, 0x81, 0xef,
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+    else
+  {
+    return -1;
+  }
 
   return 0;
 }
