@@ -16,11 +16,6 @@
 
 #include "generate.h"
 
-#define STRLEN_ATLEAST 0
-#define STRLEN_EQUALS 1
-//#define MATCH_OPTION_NONE 0
-//#define MATCH_OPTION_RESTORE_RDI 1
-
 static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_set_reg(struct _generate *generate, int value);
@@ -373,20 +368,13 @@ static int generate_check_len(struct _generate *generate, int len, int equals)
       len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
   }
 
-  // Note to self: make this possible to be a short jump
   if (equals == STRLEN_ATLEAST)
   {
-    // jl skip_exit: 0x0f, 0x8c, 0x00, 0x00, 0x00, 0x00
-    //generate_code(generate, 6, 0x0f, 0x8c, 0x00, 0x00, 0x00, 0x00);
-
     // jl skip_exit: 0x7c, 0x00
     generate_code(generate, 2, 0x7c, 0x00);
   }
     else
   {
-    // jne skip_exit: 0x0f, 0x85, 0x00, 0x00, 0x00, 0x00
-    //generate_code(generate, 6, 0x0f, 0x85, 0x00, 0x00, 0x00, 0x00);
-
     // jne skip_exit: 0x75, 0x00
     generate_code(generate, 2, 0x75, 0x00);
   }

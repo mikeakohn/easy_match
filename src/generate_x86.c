@@ -11,6 +11,9 @@
 
 #include "generate.h"
 
+static int generate_check_len(struct _generate *generate, int len, int equals);
+static int generate_match(struct _generate *generate, char *match, int len, int not);
+
 int generate_init(struct _generate *generate, uint8_t *code, int option)
 {
   //  mov [esp-4], esi: 0x89 0x74 0x24 0xfc
@@ -55,7 +58,10 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
 int generate_starts_with(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  return 0;
 }
 
 int generate_ends_with(struct _generate *generate, char *match, int len, int not)
@@ -111,4 +117,112 @@ int generate_finish(struct _generate *generate)
   return 0;
 }
 
+static int generate_check_len(struct _generate *generate, int len, int equals)
+{
+  if (len < 128)
+  {
+    // cmp esi, 1: 0x83 0xfe 0x01
+    generate_code(generate, 3, 0x83, 0xfe, len);
+  }
+    else
+  {
+    // cmp esi, 128: 0x81 0xfe 0x80 0x00 0x00 0x00
+    generate_code(generate, 6, 0x81, 0xfe,
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+
+  if (equals == STRLEN_ATLEAST)
+  {
+    // jl skip_exit: 0x7c, 0x00
+    generate_code(generate, 2, 0x7c, 0x00);
+  }
+    else
+  {
+    // jne skip_exit: 0x75, 0x00
+    generate_code(generate, 2, 0x75, 0x00);
+  }
+
+  generate->strlen_ptr = generate->ptr;
+
+  return 0;
+}
+
+static int generate_match(struct _generate *generate, char *match, int len, int not)
+{
+  int n;
+
+  n = 0;
+  while (n < len)
+  {
+    if ((len - n) >= 4)
+    {
+      if (n == 0)
+      {
+        // cmp dword [edi], 0xff: 0x81 0x3f 0xff 0x00 0x00 0x00
+        generate_code(generate, 6, 0x81, 0x3f,
+          match[n+0], match[n+1], match[n+2], match[n+3]);
+      }
+        else
+      if (n < 128)
+      {
+        // cmp dword [edi+1], 0xff: 0x81 0x7f 0x01 0xff 0x00 0x00 0x00
+        generate_code(generate, 7, 0x81, 0x7f, n,
+          match[n+0], match[n+1], match[n+2], match[n+3]);
+      }
+        else
+      {
+        // cmp dword [edi+128], 0xff: 0x81 0xbf 0x80 0x00 0x00 0x00 0xff 0x00
+        generate_code(generate, 10, 0x81, 0xbf,
+          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
+          match[n+0], match[n+1], match[n+2], match[n+3]);
+      }
+    }
+      else
+    if ((len - n) >= 2)
+    {
+      if (n == 0)
+      {
+        // cmp word [edi], 0xff: 0x66 0x81 0x3f 0xff 0x00
+        generate_code(generate, 5, 0x66, 0x81, 0x3f, match[n+0], match[n+1]);
+      }
+        else
+      if (n < 128)
+      {
+        // cmp word [edi+1], 0xff: 0x66 0x81 0x7f 0x01 0xff 0x00
+        generate_code(generate, 6, 0x66, 0x81, 0x7f, n, match[n+0], match[n+1]);
+      }
+        else
+      {
+        // cmp word [edi+128], 0xff: 0x66 0x81 0xbf 0x80 0x00 0x00 0x00 0xff
+        generate_code(generate, 9, 0x66, 0x81, 0xbf,
+          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
+          match[n+0], match[n+1]);
+      }
+    }
+      else
+    if ((len - n) >= 1)
+    {
+      if (n == 0)
+      {
+        // cmp byte [edi], 0xff: 0x80 0x3f 0xff
+        generate_code(generate, 3, 0x80, 0x3f, 0xff);
+      }
+        else
+      if (n < 128)
+      {
+        // cmp byte [edi+1], 0xff: 0x80 0x7f 0x01 0xff
+        generate_code(generate, 4, 0x80, 0x7f, n, match[0]);
+      }
+        else
+      {
+        // cmp byte [edi+128], 0xff: 0x80 0xbf 0x80 0x00 0x00 0x00 0xff
+        generate_code(generate, 7, 0x80, 0xbf,
+          n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
+          match[0]);
+      }
+    }
+  }
+
+  return 0;
+}
 

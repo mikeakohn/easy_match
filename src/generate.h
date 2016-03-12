@@ -15,6 +15,9 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#define STRLEN_ATLEAST 0
+#define STRLEN_EQUALS 1
+
 struct _generate
 {
   uint8_t *code;
