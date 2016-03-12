@@ -17,6 +17,7 @@
 #include "generate.h"
 
 static int generate_check_len(struct _generate *generate, int len, int equals);
+static int generate_save_rdi(struct _generate *generate);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_set_reg(struct _generate *generate, int value);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
@@ -95,14 +96,7 @@ int generate_match_at(struct _generate *generate, char *match, int len, int inde
 {
   if (index == 0)
   {
-    // Save rdi
-    if (generate->dest_reg_saved == 0)
-    {
-      // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
-      generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
-
-      generate->dest_reg_saved = 1;
-    }
+    generate_save_rdi(generate);
   }
     else
   if (index < 128)
@@ -149,16 +143,9 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   int label;
   int distance;
 
-  // Save rdi
-  // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
-  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xf0);
-
+  generate_save_rdi(generate);
   generate_set_reg(generate, not);
-
   generate_check_len(generate, len, STRLEN_ATLEAST);
-
-  // mov rcx, rdi: 0x48 0x89 0xf9
-  //generate_code(generate, 3, 0x48, 0x89, 0xf9);
 
   // mov ecx, esi: 0x89 0xf1
   generate_code(generate, 2, 0x89, 0xf1);
@@ -174,8 +161,6 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
     generate_code(generate, 6, 0x81, 0xe9,
       len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
   }
-
-  //if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
 
   label = generate->ptr;
 
@@ -277,7 +262,6 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   }
 
   // Restore rdi
-
   // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
   generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
 
@@ -388,11 +372,8 @@ static int generate_check_len(struct _generate *generate, int len, int equals)
   return 0;
 }
 
-static int generate_mov_rdi_end(struct _generate *generate, int len)
+static int generate_save_rdi(struct _generate *generate)
 {
-  // Move rdi to the end of the string.
-
-  // Save rdi
   if (generate->dest_reg_saved == 0)
   {
     // mov [rsp-16], rdi: 0x48 0x89 0x7c 0x24 0xf0
@@ -400,6 +381,13 @@ static int generate_mov_rdi_end(struct _generate *generate, int len)
 
     generate->dest_reg_saved = 1;
   }
+}
+
+static int generate_mov_rdi_end(struct _generate *generate, int len)
+{
+  // Move rdi to the end of the string.
+
+  generate_save_rdi(generate);
 
   // add rdi, rsi: 0x48 0x01 0xf7
   generate_code(generate, 3, 0x48, 0x01, 0xf7);

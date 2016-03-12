@@ -12,6 +12,7 @@
 #include "generate.h"
 
 static int generate_check_len(struct _generate *generate, int len, int equals);
+static int generate_save_edi(struct _generate *generate);
 static int generate_mov_edi_end(struct _generate *generate, int len);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
@@ -134,7 +135,122 @@ int generate_equals(struct _generate *generate, char *match, int len, int not)
 
 int generate_contains(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  int label;
+  int distance;
+
+  generate_save_edi(generate);
+  generate_set_reg(generate, not);
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+
+  // mov ecx, esi: 0x89 0xf1
+  generate_code(generate, 2, 0x89, 0xf1);
+
+  if (len < 128)
+  {
+    // sub ecx, 1: 0x83 0xe9 0x01
+    generate_code(generate, 3, 0x83, 0xe9, len);
+  }
+    else
+  {
+    // sub ecx, 128: 0x81 0xe9 0x80 0x00 0x00 0x00
+    generate_code(generate, 6, 0x81, 0xe9,
+      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+  }
+
+  label = generate->ptr;
+
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  // inc edi: 0x47
+  generate_code(generate, 1, 0x47);
+
+  switch(generate->reg)
+  {
+    case 0:
+      // test eax, eax: 0x85 0xc0
+      generate_code(generate, 2, 0x85, 0xc0);
+      break;
+    case 1:
+      // test ebx, ebx: 0x85 0xdb
+      generate_code(generate, 2, 0x85, 0xdb);
+      break;
+    default:
+      // test edx, [esp-20]: 0x85 0x54 0x24 0xec
+      generate_code(generate, 4, 0x85, 0x54, 0x24, 0xec - ((generate->reg - 2) * 4);
+
+      // test edx, edx: 0x85 0xd2
+      generate_code(generate, 2, 0x85, 0xd2);
+      break;
+  }
+
+  if (not == 0)
+  {
+    // jne skip_exit: 0x75, 0x00
+    generate_code(generate, 2, 0x75, 0x00);
+  }
+    else
+  {
+    // je skip_exit: 0x74, 0x00
+    generate_code(generate, 2, 0x74, 0x00);
+  }
+
+  int label_skip_exit = generate->ptr;
+
+  // dec ecx: 0xff 0xc9
+  generate_code(generate, 2, 0xff, 0xc9);
+
+  distance = generate->ptr - label;
+
+  if (distance + 2 <= 128)
+  {
+    distance = -(distance + 2);
+
+    // jnz label: 0x75 label
+    generate_code(generate, 2, 0x75, distance);
+  }
+    else
+  {
+    distance = -(distance + 3);
+
+    // jnz label: 0x0f 0x85 label
+    generate_code(generate, 3, 0x0f, 0x85,
+      distance & 0xff, (distance >> 8) & 0xff);
+  }
+
+  distance = generate->ptr - label_skip_exit;
+  generate->code[label_skip_exit - 1] = distance;
+
+  // strlen() check should jump here.
+  distance = generate->ptr - generate->strlen_ptr;
+
+  if (distance < 128)
+  {
+    generate->code[generate->strlen_ptr - 1] = distance;
+  }
+    else
+  {
+    if (generate->strlen_is_far == 0)
+    {
+      generate_insert(generate, generate->strlen_ptr, 4);
+
+      generate->strlen_ptr += 4;
+      distance = generate->ptr - generate->strlen_ptr;
+
+      generate->code[generate->strlen_ptr - 6] = 0x0f;
+      generate->code[generate->strlen_ptr - 5] = 0x8c;
+    }
+
+    generate->code[generate->strlen_ptr - 4] = distance & 0xff;
+    generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
+    generate->code[generate->strlen_ptr - 2] = (distance >> 16) & 0xff;
+    generate->code[generate->strlen_ptr - 1] = (distance >> 24) & 0xff;
+  }
+
+  // Restore edi
+  // mov edi, [esp-12]: 0x8b 0x7c 0x24 0xf4
+  generate_code(generate, 4, 0x8b, 0x7c, 0x24, 0xf4);
+
+  return 0;
 }
 
 int generate_and(struct _generate *generate)
@@ -163,6 +279,9 @@ int generate_finish(struct _generate *generate)
 
   //  mov edi, [esp-8]: 0x8b 0x7c 0x24 0xf8
   generate_code(generate, 4, 0x8b, 0x7c, 0x24, 0xf8);
+
+  // mov ebx, [esp-16]: 0x8b 0x5c 0x24 0xf0
+  generate_code(generate, 4, 0x8b, 0x5c, 0x24, 0xf0);
 
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
@@ -200,11 +319,8 @@ static int generate_check_len(struct _generate *generate, int len, int equals)
   return 0;
 }
 
-static int generate_mov_edi_end(struct _generate *generate, int len)
+static int generate_save_edi(struct _generate *generate)
 {
-  // Move rdi to the end of the string.
-
-  // Save edi
   if (generate->dest_reg_saved == 0)
   {
     // mov [esp-12], edi: 0x89 0x7c 0x24 0xf4
@@ -212,6 +328,13 @@ static int generate_mov_edi_end(struct _generate *generate, int len)
 
     generate->dest_reg_saved = 1;
   }
+}
+
+static int generate_mov_edi_end(struct _generate *generate, int len)
+{
+  // Move rdi to the end of the string.
+
+  generate_save_edi(generate);
 
   // add edi, esi: 0x01 0xf7
   generate_code(generate, 2, 0x01, 0xf7);
