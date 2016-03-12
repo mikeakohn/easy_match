@@ -19,14 +19,16 @@
 #include "tokens.h"
 
 #define MAX_CODE_SIZE 4096
+#define OP_NONE 0
 #define OP_AND 1
 #define OP_OR 2
 
-#define FUNCTION_STARTS_WITH 0
-#define FUNCTION_ENDS_WITH 1
-#define FUNCTION_MATCH_AT 2
-#define FUNCTION_EQUALS 3
-#define FUNCTION_CONTAINS 4
+#define FUNCTION_NONE 0
+#define FUNCTION_STARTS_WITH 1
+#define FUNCTION_ENDS_WITH 2
+#define FUNCTION_MATCH_AT 3
+#define FUNCTION_EQUALS 4
+#define FUNCTION_CONTAINS 5
 
 static int compile_function(struct _generate *generate, struct _tokens *tokens, int function, int not)
 {
@@ -144,62 +146,49 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
   return error;
 }
 
-static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens, int precedent)
+static int compiler_get_function(char *token)
+{
+  if (strcmp(token, "starts_with") == 0) { return FUNCTION_STARTS_WITH; }
+  else if (strcmp(token, "ends_with") == 0) { return FUNCTION_ENDS_WITH; }
+  else if (strcmp(token, "match_at") == 0) { return FUNCTION_MATCH_AT; }
+  else if (strcmp(token, "equals") == 0) { return FUNCTION_EQUALS; }
+  else if (strcmp(token, "contains") == 0) { return FUNCTION_CONTAINS; }
+
+  return FUNCTION_NONE;
+}
+
+static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
 {
   int token_type;
   int error = 0;
   int not = 0;
   int opstack[2];
   int opstack_ptr = 0;
-  //int command_count = 0;
   int pieces = 0;
+  // For short circuiting (consecutive or's that evaluate true or and's false)
+  int markers[128];
+  int marker_count = 0;
+  int curr_op = OP_NONE;
+  int function;
 
   while(1)
   {
     token_type = tokens_next(tokens);
     if (token_type == TOKEN_EOF) { break; }
 
+    function = compiler_get_function(tokens->next);
+
     if (strcmp(tokens->next, "not") == 0)
     {
       not = 1;
+      continue;
     }
       else
-    if (strcmp(tokens->next, "starts_with") == 0)
+    if (function != FUNCTION_NONE)
     {
       if ((pieces & 1) != 0) { error = 1; break; }
-      error = compile_function(generate, tokens, FUNCTION_STARTS_WITH, not);
-      pieces++;
-      not = 0;
-    }
-      else
-    if (strcmp(tokens->next, "ends_with") == 0)
-    {
-      if ((pieces & 1) != 0) { error = 1; break; }
-      error = compile_function(generate, tokens, FUNCTION_ENDS_WITH, not);
-      pieces++;
-      not = 0;
-    }
-      else
-    if (strcmp(tokens->next, "match_at") == 0)
-    {
-      if ((pieces & 1) != 0) { error = 1; break; }
-      error = compile_function(generate, tokens, FUNCTION_MATCH_AT, not);
-      pieces++;
-      not = 0;
-    }
-      else
-    if (strcmp(tokens->next, "equals") == 0)
-    {
-      if ((pieces & 1) != 0) { error = 1; break; }
-      error = compile_function(generate, tokens, FUNCTION_EQUALS, not);
-      pieces++;
-      not = 0;
-    }
-      else
-    if (strcmp(tokens->next, "contains") == 0)
-    {
-      if ((pieces & 1) != 0) { error = 1; break; }
-      error = compile_function(generate, tokens, FUNCTION_CONTAINS, not);
+      error = compile_function(generate, tokens, function, not);
+      markers[marker_count++] = generate->ptr;
       pieces++;
       not = 0;
     }
@@ -208,13 +197,6 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
     {
       if ((pieces & 1) != 1) { error = 1; break; }
       opstack[opstack_ptr++] = OP_AND;
-#if 0
-      if (command_count == 0)
-      {
-        error = 1;
-        break;
-      }
-#endif
       pieces++;
     }
       else
@@ -222,13 +204,6 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens,
     {
       if ((pieces & 1) != 1) { error = 1; break; }
       opstack[opstack_ptr++] = OP_OR;
-#if 0
-      if (command_count == 0)
-      {
-        error = 1;
-        break;
-      }
-#endif
       pieces++;
     }
       else
@@ -321,7 +296,7 @@ void *compiler_generate(char *code, int option)
   printf("        or: %d\n", generate.or);
 #endif
 
-  if (compiler_evaluate(&generate, &tokens, 0) == -1) { error = 1; }
+  if (compiler_evaluate(&generate, &tokens) == -1) { error = 1; }
 
   generate_finish(&generate);
   tokens_free(&tokens);

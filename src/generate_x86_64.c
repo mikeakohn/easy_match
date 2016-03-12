@@ -381,7 +381,7 @@ static int generate_check_len(struct _generate *generate, int len, int equals)
     else
   {
     // cmp rsi, 128: 0x48 0x81 0xfe 0x80 0x00 0x00 0x00
-    generate_code(generate, 7, 0x48, 0x81, 0xfe, 
+    generate_code(generate, 7, 0x48, 0x81, 0xfe,
       len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
   }
 
