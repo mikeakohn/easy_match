@@ -486,7 +486,7 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
       if (n == 0)
       {
         // cmp byte [edi], 0xff: 0x80 0x3f 0xff
-        generate_code(generate, 3, 0x80, 0x3f, 0xff);
+        generate_code(generate, 3, 0x80, 0x3f, match[0]);
       }
         else
       if (n < 128)
