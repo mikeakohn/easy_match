@@ -173,8 +173,11 @@ static int compiler_short_circuit(struct _generate *generate, struct _marker *ma
   {
     marker_count--;
 
-//printf("short_circuit %d> ptr=%d marker_count=%d reg=%d pop_to_reg=%d\n",
-//  n, generate->ptr, marker_count, markers[marker_count].reg, pop_to_reg);
+#if 0
+printf("short_circuit %d> ptr=%d-%d marker_count=%d reg=%d pop_to_reg=%d\n", n,
+  markers[marker_count].ptr, generate->ptr, marker_count,
+  markers[marker_count].reg, pop_to_reg);
+#endif
 
     generate_skip(generate, markers[marker_count].ptr, generate->ptr, markers[marker_count].reg, skip_value, pop_to_reg);
   }
@@ -275,10 +278,9 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
 
   if (error == 0)
   {
-
     while (opstack_ptr > 0)
     {
-      if (opstack[opstack_ptr - 1] == OP_OR) { generate_or(generate); }
+      if (opstack[opstack_ptr - 1] == OP_OR) { break; }
       else if (opstack[opstack_ptr - 1] == OP_AND) { generate_and(generate); }
 
       opstack_ptr--;
@@ -288,6 +290,14 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
     {
       compiler_short_circuit(generate, markers, marker_count, marker_and_count, 0, marker_and_count);
       marker_count -= marker_and_count;
+    }
+
+    while (opstack_ptr > 0)
+    {
+      if (opstack[opstack_ptr - 1] == OP_OR) { generate_or(generate); }
+      else if (opstack[opstack_ptr - 1] == OP_AND) { error = 1; break; }
+
+      opstack_ptr--;
     }
 
     if (marker_count != 0)
