@@ -30,6 +30,12 @@
 #define FUNCTION_EQUALS 4
 #define FUNCTION_CONTAINS 5
 
+struct _marker
+{
+  int ptr;
+  int reg;
+};
+
 static int compile_function(struct _generate *generate, struct _tokens *tokens, int function, int not)
 {
   int token_type;
@@ -157,6 +163,21 @@ static int compiler_get_function(char *token)
   return FUNCTION_NONE;
 }
 
+static int compiler_short_circuit(struct _generate *generate, struct _marker *markers, int marker_count, int count, int skip_value)
+{
+  int n;
+
+  marker_count--;
+
+  for (n = 0; n < count; n++)
+  {
+    generate_skip(generate, markers[marker_count].ptr, generate->ptr, markers[marker_count].reg, skip_value);
+    marker_count--;
+  }
+
+  return 0;
+}
+
 static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
 {
   int token_type;
@@ -165,11 +186,13 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
   int opstack[2];
   int opstack_ptr = 0;
   int pieces = 0;
-  // For short circuiting (consecutive or's that evaluate true or and's false)
-  int markers[128];
-  int marker_count = 0;
-  int curr_op = OP_NONE;
   int function;
+  // For short circuiting (consecutive or's that evaluate true or and's false)
+  struct _marker markers[128];
+  int marker_count = 0;
+  int marker_and_count = 0;
+  //int marker_or_count = 0;
+  //int curr_op = OP_NONE;
 
   while(1)
   {
@@ -187,8 +210,10 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
     if (function != FUNCTION_NONE)
     {
       if ((pieces & 1) != 0) { error = 1; break; }
+      if (marker_count == 128) { error = 1; break; }
+      markers[marker_count].reg = generate->reg;
       error = compile_function(generate, tokens, function, not);
-      markers[marker_count++] = generate->ptr;
+      markers[marker_count].ptr = generate->ptr;
       pieces++;
       not = 0;
     }
@@ -197,6 +222,7 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
     {
       if ((pieces & 1) != 1) { error = 1; break; }
       opstack[opstack_ptr++] = OP_AND;
+      marker_and_count++;
       pieces++;
     }
       else
@@ -204,7 +230,14 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
     {
       if ((pieces & 1) != 1) { error = 1; break; }
       opstack[opstack_ptr++] = OP_OR;
+      //marker_or_count++;
       pieces++;
+
+      if (marker_and_count != 0)
+      {
+        compiler_short_circuit(generate, markers, marker_count, marker_and_count, 0);
+        marker_count -= marker_and_count;
+      }
     }
       else
     {
@@ -237,6 +270,17 @@ static int compiler_evaluate(struct _generate *generate, struct _tokens *tokens)
 
   if (error == 0)
   {
+    if (marker_and_count != 0)
+    {
+      compiler_short_circuit(generate, markers, marker_count, marker_and_count, 0);
+      marker_count -= marker_and_count;
+    }
+
+    if (marker_count != 0)
+    {
+      compiler_short_circuit(generate, markers, marker_count, marker_count - 1, 0);
+    }
+
     while (opstack_ptr > 0)
     {
       if (opstack[opstack_ptr - 1] == OP_OR) { generate_or(generate); }

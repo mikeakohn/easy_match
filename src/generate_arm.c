@@ -11,6 +11,10 @@
 
 #include "generate.h"
 
+// r0 = string
+// r1 = strlen(string)
+// r4-r11 = result stack
+
 int generate_init(struct _generate *generate, uint8_t *code, int option)
 {
   return -1;

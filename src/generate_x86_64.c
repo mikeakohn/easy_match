@@ -19,6 +19,7 @@
 static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_save_rdi(struct _generate *generate);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
+static int generate_test_reg(struct _generate *generate);
 static int generate_set_reg(struct _generate *generate, int value);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
@@ -169,31 +170,8 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   // inc rdi: 0x48 0xff 0xc7
   generate_code(generate, 3, 0x48, 0xff, 0xc7);
 
-  switch(generate->reg)
-  {
-    case 0:
-      // test eax, eax: 0x85 0xc0
-      generate_code(generate, 2, 0x85, 0xc0);
-      break;
-    case 1:
-      // test r8, r8: 0x4d 0x85 0xc0
-      generate_code(generate, 3, 0x4d, 0x85, 0xc0);
-      break;
-    case 2:
-      // test r9, r9: 0x4d 0x85 0xc9
-      generate_code(generate, 3, 0x4d, 0x85, 0xc9);
-      break;
-    case 3:
-      // test r10, r10: 0x4d 0x85 0xd2
-      generate_code(generate, 3, 0x4d, 0x85, 0xd2);
-      break;
-    case 4:
-      // test r11, r11: 0x4d 0x85 0xdb
-      generate_code(generate, 3, 0x4d, 0x85, 0xdb);
-      break;
-    default:
-      return -1;
-  }
+  int count = generate_test_reg(generate);
+  if (count == 0) { return -1; }
 
   if (not == 0)
   {
@@ -228,8 +206,9 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
     distance = -(distance + 3);
 
     // jnz label: 0x0f 0x85 label
-    generate_code(generate, 3, 0x0f, 0x85,
-      distance & 0xff, (distance >> 8) & 0xff);
+    generate_code(generate, 6, 0x0f, 0x85,
+      distance & 0xff, (distance >> 8) & 0xff,
+      (distance >> 16) & 0xff, (distance >> 24) & 0xff);
   }
 
   distance = generate->ptr - label_skip_exit;
@@ -328,7 +307,54 @@ int generate_or(struct _generate *generate)
 
 int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value)
 {
-  return -1;
+  int distance;
+  int ptr_save = generate->ptr;
+  uint8_t code[64];
+
+  int count = generate_test_reg(generate);
+  if (count == 0) { return -1; }
+
+  distance = offset_goto - offset_insert;
+
+  if (distance < 128)
+  {
+    if (skip_value == 0)
+    {
+      // jz skip_exit: 0x74, 0x00
+      generate_code(generate, 2, 0x74, 0x00);
+    }
+      else
+    {
+      // jnz label: 0x75 label
+      generate_code(generate, 2, 0x75, distance);
+    }
+  }
+    else
+  {
+    if (skip_value == 0)
+    {
+      // jz label: 0x0f 0x84 label
+      generate_code(generate, 6, 0x0f, 0x84,
+        distance & 0xff, (distance >> 8) & 0xff,
+        (distance >> 16) & 0xff, (distance >> 24) & 0xff);
+    }
+      else
+    {
+      // jnz label: 0x0f 0x85 label
+      generate_code(generate, 6, 0x0f, 0x85,
+        distance & 0xff, (distance >> 8) & 0xff,
+        (distance >> 16) & 0xff, (distance >> 24) & 0xff);
+    }
+  }
+
+  int size = generate->ptr - ptr_save;
+  generate->ptr = ptr_save;
+
+  memcpy(code, generate->code + generate->ptr, size);
+  generate_insert(generate, offset_insert, size);
+  memcpy(generate->code + offset_insert, code, size);
+
+  return 0;
 }
 
 int generate_finish(struct _generate *generate)
@@ -381,6 +407,8 @@ static int generate_save_rdi(struct _generate *generate)
 
     generate->dest_reg_saved = 1;
   }
+
+  return 0;
 }
 
 static int generate_mov_rdi_end(struct _generate *generate, int len)
@@ -410,6 +438,39 @@ static int generate_mov_rdi_end(struct _generate *generate, int len)
   }
 
   return 0;
+}
+
+static int generate_test_reg(struct _generate *generate)
+{
+  int ptr_start = generate->ptr;
+
+  switch(generate->reg)
+  {
+    case 0:
+      // test eax, eax: 0x85 0xc0
+      generate_code(generate, 2, 0x85, 0xc0);
+      break;
+    case 1:
+      // test r8, r8: 0x4d 0x85 0xc0
+      generate_code(generate, 3, 0x4d, 0x85, 0xc0);
+      break;
+    case 2:
+      // test r9, r9: 0x4d 0x85 0xc9
+      generate_code(generate, 3, 0x4d, 0x85, 0xc9);
+      break;
+    case 3:
+      // test r10, r10: 0x4d 0x85 0xd2
+      generate_code(generate, 3, 0x4d, 0x85, 0xd2);
+      break;
+    case 4:
+      // test r11, r11: 0x4d 0x85 0xdb
+      generate_code(generate, 3, 0x4d, 0x85, 0xdb);
+      break;
+    default:
+      return 0;
+  }
+
+  return generate->ptr - ptr_start;
 }
 
 static int generate_set_reg(struct _generate *generate, int value)
