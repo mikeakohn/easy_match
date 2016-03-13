@@ -256,12 +256,54 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
 
 int generate_and(struct _generate *generate)
 {
-  return -1;
+  if (generate->reg < 2) { return -1; }
+
+  switch(generate->reg)
+  {
+    case 2:
+      // and eax, edx: 0x21 0xd0
+      generate_code(generate, 2, 0x21, 0xd0);
+      break;
+    case 3:
+      // and edx, [esp-20]: 0x23 0x54 0x24 0xec
+      generate_code(generate, 4, 0x23, 0x54, 0x24, 0xec);
+      break;
+    default:
+      // mov ebx, [esp-20]: 0x8b 0x5c 0x24 0xec
+      generate_code(generate, 4, 0x8b, 0x5c, 0x24, 0xec - ((generate->reg - 3) * 4));
+
+      // and [esp-20], ebx: 0x21 0x5c 0x24 0xec
+      generate_code(generate, 4, 0x21, 0x5c, 0x24, 0xec - ((generate->reg - 4) * 4));
+      break;
+  }
+
+  return 0;
 }
 
 int generate_or(struct _generate *generate)
 {
-  return -1;
+  if (generate->reg < 2) { return -1; }
+
+  switch(generate->reg)
+  {
+    case 2:
+      // or eax, edx: 0x09 0xd0
+      generate_code(generate, 2, 0x09, 0xd0);
+      break;
+    case 3:
+      // or edx, [esp-20]: 0x0b 0x54 0x24 0xec
+      generate_code(generate, 4, 0x0b, 0x54, 0x24, 0xec);
+      break;
+    default:
+      // mov ebx, [esp-20]: 0x8b 0x5c 0x24 0xec
+      generate_code(generate, 4, 0x8b, 0x5c, 0x24, 0xec - ((generate->reg - 3) * 4));
+
+      // or [esp-20], ebx: 0x09 0x5c 0x24 0xec
+      generate_code(generate, 4, 0x09, 0x5c, 0x24, 0xec - ((generate->reg - 4) * 4));
+      break;
+  }
+
+  return 0;
 }
 
 int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value)
@@ -486,20 +528,20 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
       if (n == 0)
       {
         // cmp byte [edi], 0xff: 0x80 0x3f 0xff
-        generate_code(generate, 3, 0x80, 0x3f, match[0]);
+        generate_code(generate, 3, 0x80, 0x3f, match[n+0]);
       }
         else
       if (n < 128)
       {
         // cmp byte [edi+1], 0xff: 0x80 0x7f 0x01 0xff
-        generate_code(generate, 4, 0x80, 0x7f, n, match[0]);
+        generate_code(generate, 4, 0x80, 0x7f, n, match[n+0]);
       }
         else
       {
         // cmp byte [edi+128], 0xff: 0x80 0xbf 0x80 0x00 0x00 0x00 0xff
         generate_code(generate, 7, 0x80, 0xbf,
           n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
-          match[0]);
+          match[n+0]);
       }
 
       n++;
