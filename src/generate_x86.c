@@ -272,7 +272,7 @@ int generate_skip(struct _generate *generate, int offset_insert, int offset_goto
 int generate_finish(struct _generate *generate)
 {
   // mov eax, esi: 0x89 0xf0
-  generate_code(generate, 2, 0x89, 0xf0);
+  //generate_code(generate, 2, 0x89, 0xf0);
 
   // Restore used registers
   //  mov esi, [esp-4]: 0x8b 0x74 0x24 0xfc
@@ -453,6 +453,8 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
           n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
           match[n+0], match[n+1], match[n+2], match[n+3]);
       }
+
+      n += 4;
     }
       else
     if ((len - n) >= 2)
@@ -475,6 +477,8 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
           n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
           match[n+0], match[n+1]);
       }
+
+      n += 2;
     }
       else
     if ((len - n) >= 1)
@@ -497,7 +501,16 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
           n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff,
           match[0]);
       }
+
+      n++;
     }
+
+    // jne skip_exit: 0x75, 0x01
+    generate_code(generate, 2, 0x75, 0x00);
+
+    if (jmp_exit_count == 4096) { return -1; }
+
+    jmp_exit[jmp_exit_count++] = generate->ptr;
   }
 
   generate_set_reg(generate, not ^ 1);

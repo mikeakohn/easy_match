@@ -309,7 +309,7 @@ void *compiler_generate(char *code, int option)
     match = NULL;
   }
 
-//#define DUMP_CODE
+#define DUMP_CODE
 #ifdef DUMP_CODE
   FILE *out = fopen("/tmp/debug.bin", "wb");
   fwrite(generate.code, 1, generate.ptr, out);
