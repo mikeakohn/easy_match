@@ -14,6 +14,7 @@
 static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_save_edi(struct _generate *generate);
 static int generate_mov_edi_end(struct _generate *generate, int len);
+static int generate_set_reg(struct _generate *generate, int value);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
@@ -171,15 +172,15 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
       generate_code(generate, 2, 0x85, 0xc0);
       break;
     case 1:
-      // test ebx, ebx: 0x85 0xdb
-      generate_code(generate, 2, 0x85, 0xdb);
-      break;
-    default:
-      // test edx, [esp-20]: 0x85 0x54 0x24 0xec
-      generate_code(generate, 4, 0x85, 0x54, 0x24, 0xec - ((generate->reg - 2) * 4);
-
       // test edx, edx: 0x85 0xd2
       generate_code(generate, 2, 0x85, 0xd2);
+      break;
+    default:
+      // mov ebx, [esp-20]: 0x8b 0x5c 0x24 0xec
+      generate_code(generate, 4, 0x8b, 0x5c, 0x24, 0xec - ((generate->reg - 2) * 4));
+
+      // test ebx, ebx: 0x85 0xdb
+      generate_code(generate, 2, 0x85, 0xdb);
       break;
   }
 
@@ -328,6 +329,8 @@ static int generate_save_edi(struct _generate *generate)
 
     generate->dest_reg_saved = 1;
   }
+
+  return 0;
 }
 
 static int generate_mov_edi_end(struct _generate *generate, int len)
@@ -359,9 +362,71 @@ static int generate_mov_edi_end(struct _generate *generate, int len)
   return 0;
 }
 
+static int generate_set_reg(struct _generate *generate, int value)
+{
+  if (generate->reg > 16) { return -1; }
+
+  if (generate->reg == 0)
+  {
+    // xor eax, eax: 0x31 0xc0
+    generate_code(generate, 2, 0x31, 0xc0);
+
+    if (value == 0)
+    {
+      return 2;
+    }
+      else
+    {
+      // inc eax: 0x40
+      generate_code(generate, 1, 0x40);
+      return 3;
+    }
+  }
+    else
+  if (generate->reg == 1)
+  {
+    // xor edx, edx: 0x31 0xd2
+    generate_code(generate, 2, 0x31, 0xd2);
+
+    if (value == 0)
+    {
+      return 2;
+    }
+      else
+    {
+      // inc edx: 0x42
+      generate_code(generate, 1, 0x42);
+      return 3;
+    }
+  }
+    else
+  {
+    int start = generate->ptr;
+
+    // xor ebx, ebx: 0x31 0xdb
+    generate_code(generate, 2, 0x31, 0xdb);
+
+    if (value != 0)
+    {
+      // inc ebx: 0x43
+      generate_code(generate, 1, 0x43);
+    }
+
+    // mov [esp-20], ebx: 0x89 0x5c 0x24 0xec
+    generate_code(generate, 4, 0x89, 0x5c, 0x24, 0xec - ((generate->reg - 2) * 4));
+
+    return generate->ptr - start;
+  }
+}
+
 static int generate_match(struct _generate *generate, char *match, int len, int not)
 {
+  int jmp_exit[4096];
+  int jmp_exit_count = 0;
+  int distance;
   int n;
+
+  if (generate->reg > 16) { return -1; }
 
   n = 0;
   while (n < len)
@@ -434,6 +499,72 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
       }
     }
   }
+
+  generate_set_reg(generate, not ^ 1);
+
+  // jmp exit_block: 0xeb 0x00
+  generate_code(generate, 2, 0xeb, 0x00);
+
+  for (n = jmp_exit_count - 1; n >= 0; n--)
+  {
+    distance = generate->ptr - jmp_exit[n];
+
+    if (distance < 128)
+    {
+      generate->code[jmp_exit[n] - 1] = distance;
+    }
+      else
+    {
+      generate_insert(generate, jmp_exit[n], 4);
+
+      jmp_exit[n] += 4;
+      distance = generate->ptr - jmp_exit[n];
+
+      generate->code[jmp_exit[n] - 6] = 0x0f;
+      generate->code[jmp_exit[n] - 5] = 0x85;
+      generate->code[jmp_exit[n] - 4] = distance & 0xff;
+      generate->code[jmp_exit[n] - 3] = (distance >> 8) & 0xff;
+      generate->code[jmp_exit[n] - 2] = (distance >> 16) & 0xff;
+      generate->code[jmp_exit[n] - 1] = (distance >> 24) & 0xff;
+    } 
+  } 
+  
+  distance = generate->ptr - generate->strlen_ptr;
+
+  if (distance < 128)
+  {
+    generate->code[generate->strlen_ptr - 1] = distance;
+    generate->strlen_is_far = 0;
+  }
+    else
+  {
+    generate_insert(generate, generate->strlen_ptr, 4);
+
+    generate->strlen_ptr += 4;
+    distance = generate->ptr - generate->strlen_ptr;
+
+    if (generate->code[generate->strlen_ptr - 6] == 0x75)
+    {
+      generate->code[generate->strlen_ptr - 6] = 0x0f;
+      generate->code[generate->strlen_ptr - 5] = 0x85;
+    }
+      else
+    {
+      generate->code[generate->strlen_ptr - 6] = 0x0f;
+      generate->code[generate->strlen_ptr - 5] = 0x8c;
+    }
+
+    generate->code[generate->strlen_ptr - 4] = distance & 0xff;
+    generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
+    generate->code[generate->strlen_ptr - 2] = (distance >> 16) & 0xff;
+    generate->code[generate->strlen_ptr - 1] = (distance >> 24) & 0xff;
+
+    generate->strlen_is_far = 0;
+  }
+
+  n = generate_set_reg(generate, not);
+
+  generate->code[generate->ptr - n - 1] = n;
 
   return 0;
 }
