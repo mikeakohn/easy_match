@@ -343,7 +343,7 @@ int generate_skip(struct _generate *generate, int offset_insert, int offset_goto
     if (skip_value == 0)
     {
       // jz skip_exit: 0x74, 0x00
-      generate_code(generate, 2, 0x74, 0x00);
+      generate_code(generate, 2, 0x74, distance);
     }
       else
     {
