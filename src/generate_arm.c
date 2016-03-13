@@ -62,7 +62,10 @@ int generate_skip(struct _generate *generate, int offset_insert, int offset_goto
 
 int generate_finish(struct _generate *generate)
 {
-  return -1;
+  // bx lr: 0x1e,0xff,0x2f,0xe1
+  generate_code(generate, 4, 0x1e, 0xff, 0x2f, 0xe1);
+
+  return 0;
 }
 
 
