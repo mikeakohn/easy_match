@@ -43,7 +43,7 @@ int generate_equals(struct _generate *generate, char *match, int len, int not);
 int generate_contains(struct _generate *generate, char *match, int len, int not);
 int generate_and(struct _generate *generate);
 int generate_or(struct _generate *generate);
-int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value);
+int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg);
 int generate_finish(struct _generate *generate);
 
 // Common functions

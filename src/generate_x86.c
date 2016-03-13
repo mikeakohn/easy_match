@@ -307,7 +307,7 @@ int generate_or(struct _generate *generate)
   return 0;
 }
 
-int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value)
+int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg)
 {
   return -1;
 }

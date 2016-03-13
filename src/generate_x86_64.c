@@ -19,7 +19,7 @@
 static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_save_rdi(struct _generate *generate);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
-static int generate_test_reg(struct _generate *generate);
+static int generate_test_reg(struct _generate *generate, int reg);
 static int generate_set_reg(struct _generate *generate, int value);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
@@ -170,7 +170,9 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   // inc rdi: 0x48 0xff 0xc7
   generate_code(generate, 3, 0x48, 0xff, 0xc7);
 
-  int count = generate_test_reg(generate);
+  // mov does't set flags, but an inc should.  This could be an
+  // optimization.
+  int count = generate_test_reg(generate, generate->reg);
   if (count == 0) { return -1; }
 
   if (not == 0)
@@ -305,14 +307,34 @@ int generate_or(struct _generate *generate)
   return 0;
 }
 
-int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value)
+int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg)
 {
   int distance;
   int ptr_save = generate->ptr;
   uint8_t code[64];
 
-  int count = generate_test_reg(generate);
+  int count = generate_test_reg(generate, reg);
   if (count == 0) { return -1; }
+
+  if (reg != pop_to_reg)
+  {
+    int condition = skip_value == 1 ? 0x45 : 0x44;
+    int regs = (reg - 1);
+    int opcode = 0x49;
+
+    if (pop_to_reg == 0)
+    {
+      regs |= 0xc0;
+    }
+      else
+    {
+      regs |= pop_to_reg - 1;
+      opcode = 0x4d;
+    }
+
+    // cmov[z/nz] pop_reg, reg
+    generate_code(generate, 4, opcode, 0x0f, condition, regs);
+  }
 
   distance = offset_goto - offset_insert;
 
@@ -440,11 +462,11 @@ static int generate_mov_rdi_end(struct _generate *generate, int len)
   return 0;
 }
 
-static int generate_test_reg(struct _generate *generate)
+static int generate_test_reg(struct _generate *generate, int reg)
 {
   int ptr_start = generate->ptr;
 
-  switch(generate->reg)
+  switch(reg)
   {
     case 0:
       // test eax, eax: 0x85 0xc0
