@@ -20,6 +20,11 @@ show_help()
   echo "  --enable-windows          cross compile for windows"
 }
 
+if [ "${MACHINE:0:3}" == "arm" ]
+then
+  MACHINE='arm'
+fi
+
 for option in $@; do
 
   optval="${option#*=}"
