@@ -23,6 +23,7 @@ struct _generate
   uint8_t *code;
   int ptr;
   int reg;
+  int reg_max;
   int starts_with;
   int ends_with;
   int match_at;
@@ -33,6 +34,8 @@ struct _generate
   int strlen_ptr;
   int strlen_is_far;
   int dest_reg_saved;
+  int strings_ptr;
+  uint8_t strings[4096];
 };
 
 int generate_init(struct _generate *generate, uint8_t *code, int option);

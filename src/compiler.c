@@ -123,6 +123,8 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
     return 1;
   }
 
+  memcpy(generate->strings + generate->strings_ptr, match, len);
+
   switch(function)
   {
     case FUNCTION_STARTS_WITH:
@@ -144,10 +146,13 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
       return 1;
   }
 
+  generate->strings_ptr += (len + 3) & 0xfffffffc;
+
   token_type = tokens_next(tokens);
   if (token_type != TOKEN_PAREN_CLOSE) { return 1; }
 
   generate->reg++;
+  if (generate->reg > generate->reg_max) { generate->reg_max = generate->reg; }
 
   return error;
 }
