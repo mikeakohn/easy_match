@@ -97,17 +97,20 @@ int generate_match_at(struct _generate *generate, char *match, int len, int inde
 {
   if (index == 0)
   {
-    generate_save_rdi(generate);
   }
     else
   if (index < 128)
   {
+    generate_save_rdi(generate);
+
     // add rdi, 1: 0x48 0x83 0xc7 0x01
     generate_code(generate, 4, 0x48, 0x83, 0xc7, index);
   }
     else
   if (index < 32768)
   {
+    generate_save_rdi(generate);
+
     // add rdi, 128: 0x48 0x81 0xc7 0x80 0x00 0x00 0x00
     generate_code(generate, 7, 0x48, 0x81, 0xc7,
       index & 0xff, (index >> 8) & 0xff,

@@ -85,24 +85,20 @@ int generate_match_at(struct _generate *generate, char *match, int len, int inde
 {
   if (index == 0)
   {
-    // Save edi
-    if (generate->dest_reg_saved == 0)
-    {
-      // mov [esp-12], edi: 0x89 0x7c 0x24 0xf4
-      generate_code(generate, 4, 0x89, 0x7c, 0x24, 0xf4);
-
-      generate->dest_reg_saved = 1;
-    }
   }
     else
   if (index < 128)
   {
+    generate_save_edi(generate);
+
     // add edi, 1: 0x83 0xc7 0x01
     generate_code(generate, 3, 0x83, 0xc7, index);
   }
     else
   if (index < 32768)
   {
+    generate_save_edi(generate);
+
     // add edi, 128: 0x81 0xc7 0x80 0x00 0x00 0x00
     generate_code(generate, 6, 0x81, 0xc7,
       index & 0xff, (index >> 8) & 0xff,
