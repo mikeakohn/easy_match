@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 #include <pcre.h>
 
@@ -28,17 +29,35 @@ union _perftime
   uint64_t count;
 };
 
-#define TIMER_START \
+#define CYCLES_START \
   asm __volatile__ \
   ( \
     "rdtsc" : "=a" (perf_start.split.lo), "=d" (perf_start.split.hi) \
   );
 
-#define TIMER_STOP \
+#define CYCLES_STOP \
   asm __volatile__ \
   ( \
     "rdtsc" : "=a" (perf_end.split.lo), "=d" (perf_end.split.hi) \
   );
+
+#define TIMER_START \
+  clock_gettime(CLOCK_MONOTONIC, &tp_start);
+
+#define TIMER_STOP \
+  clock_gettime(CLOCK_MONOTONIC, &tp_stop);
+
+double diff_time(struct timespec *tp_start, struct timespec *tp_stop)
+{
+  long nsec = tp_stop->tv_nsec - tp_start->tv_nsec;
+  long sec = tp_stop->tv_sec - tp_start->tv_sec;
+
+  if (nsec < 0) { sec--; nsec += 1000000000; }
+
+  double t = (sec * 1000) + ((double)nsec / 1000000);
+
+  return t;
+}
 
 int main(int argc, char *argv[])
 {
@@ -54,8 +73,12 @@ int main(int argc, char *argv[])
   int line_start;
   int count;
   int i;
+#if 0
   union _perftime perf_start;
   union _perftime perf_end;
+#endif
+  struct timespec tp_start;
+  struct timespec tp_stop;
   const char *regex_error;
   int regex_error_offset;
   int regex_substr_vec[30];
@@ -162,7 +185,8 @@ int main(int argc, char *argv[])
     if (result == 1) { count++; }
   }
   TIMER_STOP
-  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
 
   printf("Easy Match (with len)\n");
 
@@ -174,7 +198,8 @@ int main(int argc, char *argv[])
     if (result == 1) { count++; }
   }
   TIMER_STOP
-  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
 
   printf("strncmp()\n");
 
@@ -187,7 +212,8 @@ int main(int argc, char *argv[])
     if (strncmp(buffer + lines[i], startswith, len) == 0) { count++; }
   }
   TIMER_STOP
-  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
 
   printf("PCRE\n");
 
@@ -207,7 +233,8 @@ int main(int argc, char *argv[])
     if (regex_ret != PCRE_ERROR_NOMATCH) { count++; }
   }
   TIMER_STOP
-  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
 
   if (regex_extra != NULL) { pcre_free(regex_extra); }
   pcre_free(regex_compiled);

@@ -114,9 +114,15 @@ int generate_finish(struct _generate *generate)
   // mov r0, r1: 0x01,0x00,0xa0,0xe1
   //generate_code(generate, 4, 0x01, 0x00, 0xa0, 0xe1);
 
-  // FIXME - optimize this.. this is slow
+  int push_list = push_list = (1 << generate->reg_max) - 1;
+
+  // r4 is needed for temp. r5-r11 could have been used for calulation.
+  push_list = (push_list << 5) | 0x10;
+
   // ldm sp, { r4,r5,r6,r7,r8,r9,r10,r11 }: 0xf0,0x0f,0x1d,0xe9
-  generate_code(generate, 4, 0xf0, 0x0f, 0x1d, 0xe9);
+  generate_code(generate, 4, push_list & 0xff, (push_list >> 8), 0x1d, 0xe9);
+  generate->code[16] = push_list & 0xff;
+  generate->code[17] = push_list >> 8;
 
   // mov r0, r5: 0x05,0x00,0xa0,0xe1
   //generate_code(generate, 4, 0x05, 0x00, 0xa0, 0xe1);

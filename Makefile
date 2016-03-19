@@ -12,8 +12,8 @@ test_tokens:
 	$(CC) -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
 
 compare:
-	$(CC) -o compare_starts_with tests/compare_starts_with.c build/*.o -Isrc -lpcre $(CFLAGS)
-	$(CC) -o compare_ends_with tests/compare_ends_with.c build/*.o -Isrc -lpcre $(CFLAGS)
+	$(CC) -o compare_starts_with tests/compare_starts_with.c build/*.o -Isrc -lpcre -lrt $(CFLAGS)
+	$(CC) -o compare_ends_with tests/compare_ends_with.c build/*.o -Isrc -lpcre -lrt $(CFLAGS)
 
 clean:
 	@rm -f build/*.o
