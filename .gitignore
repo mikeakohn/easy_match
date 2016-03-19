@@ -5,3 +5,4 @@ compare_startswith
 compare_endswith
 examples.txt
 test.asm
+config.mak

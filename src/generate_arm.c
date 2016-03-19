@@ -37,17 +37,16 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
   // orr r3, r3, #0xff000000: 0xff,0x34,0x83,0xe3
   generate_code(generate, 4, 0xff, 0x34, 0x83, 0xe3);
 
-  // FIXME - optimize this.. this is slow
   // stm sp, { r4,r5,r6,r7,r8,r9,r10,r11 }: 0xf0,0x0f,0x0d,0xe9
-  generate_code(generate, 4, 0xf0, 0x0f, 0x0d, 0xe9);
+  generate_code(generate, 4, 0xf0, 0x0f, 0x2d, 0xe9);
 
   if (option != 1)
   {
-    // mov r1, r0: 0x00 0x10 0xa0 0xe1
-    generate_code(generate, 4, 0x00, 0x10, 0xa0, 0xe1);
+    // mov r1, #0: 0x00,0x10,0xa0,0xe3
+    generate_code(generate, 4, 0x00, 0x10, 0xa0, 0xe3);
 
-    // ldrb r2, [r1]: 0x00 0x20 0xd1 0xe5
-    generate_code(generate, 4, 0x00, 0x20, 0xd1, 0xe5);
+    // ldrb r2, [r0,r1]: 0x01,0x20,0xd0,0xe7
+    generate_code(generate, 4, 0x01, 0x20, 0xd0, 0xe7);
 
     // cmp r2, #0: 0x00,0x00,0x52,0xe3
     generate_code(generate, 4, 0x00, 0x00, 0x52, 0xe3);
@@ -57,9 +56,6 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
     // bne 4: 0xfb 0xff 0xff 0x1a
     generate_code(generate, 4, 0xfb, 0xff, 0xff, 0x1a);
-
-    // sub r1, r1, r0: 0x00,0x10,0x41,0xe0
-    generate_code(generate, 4, 0x00, 0x10, 0x41, 0xe0);
   }
 
   return 0;
@@ -85,7 +81,10 @@ int generate_match_at(struct _generate *generate, char *match, int len, int inde
 
 int generate_equals(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_EQUALS);
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  return 0;
 }
 
 int generate_contains(struct _generate *generate, char *match, int len, int not)
@@ -120,7 +119,7 @@ int generate_finish(struct _generate *generate)
   push_list = (push_list << 5) | 0x10;
 
   // ldm sp, { r4,r5,r6,r7,r8,r9,r10,r11 }: 0xf0,0x0f,0x1d,0xe9
-  generate_code(generate, 4, push_list & 0xff, (push_list >> 8), 0x1d, 0xe9);
+  generate_code(generate, 4, push_list & 0xff, (push_list >> 8), 0xbd, 0xe8);
   generate->code[16] = push_list & 0xff;
   generate->code[17] = push_list >> 8;
 
@@ -181,10 +180,16 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
     if ((len - n) >= 4)
     {
       // ldr r2, [r0], #4: 0x04,0x20,0x90,0xe4
-      generate_code(generate, 4, 0x04, 0x20, 0x90, 0xe4);
+      //generate_code(generate, 4, 0x04, 0x20, 0x90, 0xe4);
 
       // ldr r4, [r3], #4: 0x04,0x40,0x93,0xe4
-      generate_code(generate, 4, 0x04, 0x40, 0x93, 0xe4);
+      //generate_code(generate, 4, 0x04, 0x40, 0x93, 0xe4);
+
+      // ldr r2, [r0, #1]: 0x01,0x20,0x90,0xe5
+      generate_code(generate, 4, n, 0x20, 0x90, 0xe5);
+
+      // ldr r4, [r3, #1]: 0x01,0x40,0x93,0xe5
+      generate_code(generate, 4, n, 0x40, 0x93, 0xe5);
 
       n += 4;
     }
@@ -199,11 +204,11 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
       else
     if ((len - n) >= 1)
     {
-      // ldrb r2, [r0]: 0x00,0x20,0xd0,0xe5
-      generate_code(generate, 4, 0x00, 0x20, 0xd0, 0xe5);
+      // ldrb r2, [r0, #1]: 0x01,0x20,0xd0,0xe5
+      generate_code(generate, 4, n, 0x20, 0xd0, 0xe5);
 
-      // ldrb r4, [r3]: 0x00,0x40,0xd3,0xe5
-      generate_code(generate, 4, 0x00, 0x40, 0xd3, 0xe5);
+      // ldrb r4, [r3, #1]: 0x01,0x40,0xd3,0xe5
+      generate_code(generate, 4, n, 0x40, 0xd3, 0xe5);
 
       n++;
     }
@@ -217,6 +222,12 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
     // movne r0, #0: 0x00,0x00,0xa0,0x13
     generate_code(generate, 4, 0x00, 0x00, 0xa0, 0x13);
   }
+
+  distance = (generate->ptr - (generate->strlen_ptr + 8)) / 4;
+
+  generate->code[generate->strlen_ptr - 4] = distance & 0xff;
+  generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
+  generate->code[generate->strlen_ptr - 2] = (distance >> 16) & 0xff;
 
 #if 0
   // mov r2, #0: 0x00,0x20,0xa0,0xe3
