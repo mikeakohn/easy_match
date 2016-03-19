@@ -21,6 +21,8 @@
 // r5-r11 = result stack
 
 static int generate_check_len(struct _generate *generate, int len, int equals);
+static int generate_save_r0(struct _generate *generate);
+static int generate_mov_r0_end(struct _generate *generate, int len);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
@@ -71,12 +73,61 @@ int generate_starts_with(struct _generate *generate, char *match, int len, int n
 
 int generate_ends_with(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+  generate_save_r0(generate);
+  generate_mov_r0_end(generate, len);
+
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  // Restore r0
+  // ldr r0, [sp,#-4]: 0x04,0x00,0x1d,0xe5
+  generate_code(generate, 4, 0x04, 0x00, 0x1d, 0xe5);
+
+  return 0;
 }
 
 int generate_match_at(struct _generate *generate, char *match, int len, int index, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+
+  // limit to 16 million
+  if (index >= (1 << 24)) { return -1; }
+
+  if (index != 0)
+  {
+    generate_save_r0(generate);
+
+    // add r0, r0, #44: 0x2c,0x00,0x80,0xe2
+    generate_code(generate, 4, index & 0xff, 0x00, 0x80, 0xe2);
+
+    if ((index & 0xff00) != 0)
+    {
+      // add r0, r0, #0xff00: 0xff,0x0c,0x80,0xe2
+      generate_code(generate, 4, (index >> 8) & 0xff, 0x0c, 0x80, 0xe2);
+    }
+
+    if ((index & 0xff0000) != 0)
+    {
+      // add r0, r0, #0xff0000: 0xff,0x08,0x80,0xe2
+      generate_code(generate, 4, (index >> 16) & 0xff, 0x08, 0x80, 0xe2);
+    }
+  }
+
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  // add r0, r0, #44: 0x2c,0x00,0x80,0xe2
+  generate_code(generate, 4, 0x2c, 0x00, 0x80, 0xe2);
+
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  if (index != 0)
+  {
+    // Restore r0
+    // ldr r0, [sp,#-4]: 0x04,0x00,0x1d,0xe5
+    generate_code(generate, 4, 0x04, 0x00, 0x1d, 0xe5);
+  }
+
+  return 0;
 }
 
 int generate_equals(struct _generate *generate, char *match, int len, int not)
@@ -89,7 +140,14 @@ int generate_equals(struct _generate *generate, char *match, int len, int not)
 
 int generate_contains(struct _generate *generate, char *match, int len, int not)
 {
-  return -1;
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+  generate_save_r0(generate);
+
+  // Restore r0
+  // ldr r0, [sp,#-4]: 0x04,0x00,0x1d,0xe5
+  generate_code(generate, 4, 0x04, 0x00, 0x1d, 0xe5);
+
+  return 0;
 }
 
 int generate_and(struct _generate *generate)
@@ -160,6 +218,47 @@ static int generate_check_len(struct _generate *generate, int len, int equals)
   }
 
   generate->strlen_ptr = generate->ptr;
+
+  return 0;
+}
+
+static int generate_save_r0(struct _generate *generate)
+{
+  // str r0, [sp,#-4]: 0x04,0x00,0x0d,0xe5
+  generate_code(generate, 4, 0x04, 0x00, 0x0d, 0xe5);
+
+  return 0;
+}
+
+static int generate_mov_r0_end(struct _generate *generate, int len)
+{
+  // add r0, r0, r1: 0x01,0x00,0x80,0xe0
+  generate_code(generate, 4, 0x01, 0x00, 0x80, 0xe0);
+
+  if (len < 256)
+  {
+    // sub r0, r0, #0xff: 0xff,0x00,0x40,0xe2
+    generate_code(generate, 4, len, 0x00, 0x40, 0xe2);
+  }
+    else
+  {
+    // mov r4, #0xff: 0xff,0x40,0xa0,0xe3
+    generate_code(generate, 4, len & 0xff, 0x40, 0xa0, 0xe3);
+
+    if ((len & 0xff000000) != 0) { return -1; }
+
+    if ((len & 0xff0000) != 0)
+    {
+      // orr r4, r4, #0xff0000: 0xff,0x48,0x84,0xe3
+      generate_code(generate, 4, (len >> 16) & 0xff, 0x48, 0x84, 0xe3);
+    }
+
+    if ((len & 0xff00) != 0)
+    {
+      // orr r4, r4, #0xff00: 0xff,0x4c,0x84,0xe3
+      generate_code(generate, 4, (len >> 8) & 0xff, 0x4c, 0x84, 0xe3);
+    }
+  }
 
   return 0;
 }
