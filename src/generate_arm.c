@@ -193,14 +193,19 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
 
       n += 4;
     }
-#if 0
       else
-    if ((len - n) >= 2)
+    if ((len - n) >= 2 && n < 256)
     {
-      // Newer ARMs should support this.  Fill in later
+      // Newer ARMs should support this.
+
+      // ldrh r2, [r0, #1]: 0xbf 0x2f 0xd0 0xe1
+      generate_code(generate, 4, 0xb0 | (n & 0xf), 0x20 | (n >> 4), 0xd0, 0xe1);
+
+      // ldrh r4, [r3, #1]: 0xbf 0x4f 0xd3 0xe1
+      generate_code(generate, 4, 0xb0 | (n & 0xf), 0x40 | (n >> 4), 0xd0, 0xe1);
+
       n += 2;
     }
-#endif
       else
     if ((len - n) >= 1)
     {
