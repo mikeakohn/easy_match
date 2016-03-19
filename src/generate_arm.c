@@ -216,11 +216,30 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
     // cmp r2, r4: 0x04,0x00,0x52,0xe1
     generate_code(generate, 4, 0x04, 0x00, 0x52, 0xe1);
 
-    // moveq r0, #1: 0x01,0x00,0xa0,0x03
-    generate_code(generate, 4, 0x01, 0x00, 0xa0, 0x03);
+    if (n == len)
+    {
+      // moveq r0, #1: 0x01,0x00,0xa0,0x03
+      generate_code(generate, 4, 0x01, 0x00, 0xa0, 0x03);
 
-    // movne r0, #0: 0x00,0x00,0xa0,0x13
-    generate_code(generate, 4, 0x00, 0x00, 0xa0, 0x13);
+      // movne r0, #0: 0x00,0x00,0xa0,0x13
+      generate_code(generate, 4, 0x00, 0x00, 0xa0, 0x13);
+    }
+      else
+    {
+      // bne 0: 0xfe,0xff,0xff,0x1a
+      generate_code(generate, 4, 0x00, 0x00, 0x00, 0x1a);
+
+      jmp_exit[jmp_exit_count++] = generate->ptr;
+    }
+  }
+
+  for (n = 0; n < jmp_exit_count; n++)
+  {
+    distance = (generate->ptr - (jmp_exit[n] + 8)) / 4;
+
+    generate->code[jmp_exit[n] - 4] = distance & 0xff;
+    generate->code[jmp_exit[n] - 3] = (distance >> 8) & 0xff;
+    generate->code[jmp_exit[n] - 2] = (distance >> 16) & 0xff;
   }
 
   distance = (generate->ptr - (generate->strlen_ptr + 8)) / 4;
@@ -228,23 +247,6 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
   generate->code[generate->strlen_ptr - 4] = distance & 0xff;
   generate->code[generate->strlen_ptr - 3] = (distance >> 8) & 0xff;
   generate->code[generate->strlen_ptr - 2] = (distance >> 16) & 0xff;
-
-#if 0
-  // mov r2, #0: 0x00,0x20,0xa0,0xe3
-  generate_code(generate, 4, 0x00, 0x20, 0xa0, 0xe3);
-
-  // ldrb r3, [r0,r2]: 0x02,0x30,0xd0,0xe7
-  generate_code(generate, 4, 0x02, 0x30, 0xd0, 0xe7);
-
-  // add r2, r2, #1: 0x01,0x20,0x82,0xe2
-  generate_code(generate, 4, 0x01, 0x20, 0x82, 0xe2);
-
-  // cmp r2, r1: 0x01,0x00,0x52,0xe1
-  generate_code(generate, 4, 0x01, 0x00, 0x52, 0xe1);
-
-  // bne 0: 0xfe,0xff,0xff,0x1a
-  generate_code(generate, 4, 0x00, 0x00, 0x00, 0x1a);
-#endif
 
   return 0;
 }
