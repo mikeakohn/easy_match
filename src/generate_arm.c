@@ -151,7 +151,7 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   // beq 0: 0xfe,0xff,0xff,0x0a
-  generate_code(generate, 4, 0x08, 0xff, 0xff, 0x0a);
+  generate_code(generate, 4, 0x08, 0x00, 0x00, 0x0a);
 
   // add r0, r0, #1: 0x01,0x00,0x80,0xe2
   generate_code(generate, 4, 0x01, 0x00, 0x80, 0xe2);
@@ -203,7 +203,31 @@ int generate_or(struct _generate *generate)
 
 int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg)
 {
-  return -1;
+  int ptr_save = generate->ptr;
+  int distance = (offset_goto - (offset_insert + 4)) / 4;
+  int insert_size;
+
+  insert_size = (reg != pop_to_reg) ? 12: 8;
+
+  generate_insert(generate, offset_insert, insert_size);
+
+  generate->ptr = offset_insert;
+
+  //  cmp r7, #1: 0x01,0x00,0x57,0xe3
+  generate_code(generate, 4, skip_value, 0x00, 0x50 | (reg + 5), 0xe3);
+
+  if (reg != pop_to_reg)
+  {
+    // moveq r7, r8: 0x08,0x70,0xa0,0x01
+    generate_code(generate, 4, reg + 5, 0x00 | ((pop_to_reg + 5) << 4), 0xa0, 0x01);
+  }
+
+  // beq 0: 0xfe,0xff,0xff,0x0a
+  generate_code(generate, 4, distance & 0xff, (distance >> 8) & 0xff, (distance >> 16) & 0xff, 0x0a);
+
+  generate->ptr = ptr_save + insert_size;
+
+  return 0;
 }
 
 int generate_string_const_add(struct _generate *generate, int offset)
