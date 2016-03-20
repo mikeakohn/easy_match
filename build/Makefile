@@ -2,11 +2,11 @@ include ../config.mak
 
 #CFLAGS=-Wall -O3 -g
 #CFLAGS=-Wall -g
-VPATH=../src
+VPATH=../src:../tests
 
 #OBJECTS=tokens.o compiler.o generate_linux_x86_64.o
 
-default: $(OBJECTS)
+default: $(OBJECTS) timer.o
 	$(CC) -o ../easy_match ../tests/easy_match.c $(OBJECTS) -I../src $(CFLAGS)
 
 %.o: %.c %.h

@@ -1,8 +1,7 @@
 *.o
 test_tokens
 easy_match
-compare_startswith
-compare_endswith
+compare_speed
 examples.txt
 test.asm
 config.mak

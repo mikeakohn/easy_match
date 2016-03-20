@@ -13,51 +13,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
 
 #include <pcre.h>
 
 #include "compiler.h"
-
-union _perftime
-{
-  struct _split
-  {
-    uint32_t lo;
-    uint32_t hi;
-  } split;
-  uint64_t count;
-};
-
-#define CYCLES_START \
-  asm __volatile__ \
-  ( \
-    "rdtsc" : "=a" (perf_start.split.lo), "=d" (perf_start.split.hi) \
-  );
-
-#define CYCLES_STOP \
-  asm __volatile__ \
-  ( \
-    "rdtsc" : "=a" (perf_end.split.lo), "=d" (perf_end.split.hi) \
-  );
-
-#define TIMER_START \
-  clock_gettime(CLOCK_MONOTONIC, &tp_start);
-
-#define TIMER_STOP \
-  clock_gettime(CLOCK_MONOTONIC, &tp_stop);
-
-double diff_time(struct timespec *tp_start, struct timespec *tp_stop)
-{
-  long nsec = tp_stop->tv_nsec - tp_start->tv_nsec;
-  long sec = tp_stop->tv_sec - tp_start->tv_sec;
-
-  if (nsec < 0) { sec--; nsec += 1000000000; }
-
-  double t = (sec * 1000) + ((double)nsec / 1000000);
-
-  return t;
-}
+#include "timer.h"
 
 int main(int argc, char *argv[])
 {
@@ -73,19 +33,22 @@ int main(int argc, char *argv[])
   int line_start;
   int count;
   int i;
-#if 0
+#ifdef CYCLES_COUNT 
   union _perftime perf_start;
   union _perftime perf_end;
-#endif
+#else
   struct timespec tp_start;
   struct timespec tp_stop;
+#endif
   const char *regex_error;
   int regex_error_offset;
   int regex_substr_vec[30];
   pcre_extra *regex_extra;
   pcre *regex_compiled;
   char *regex;
-  char *startswith;
+  char *starts_with = NULL;
+  char *ends_with = NULL;
+  char *contains = NULL;
 
   if (argc != 5)
   {
@@ -94,7 +57,21 @@ int main(int argc, char *argv[])
   }
 
   regex = argv[3];
-  startswith = argv[4];
+
+  if (argv[4][0] == '^')
+  {
+    starts_with = argv[4] + 1;
+  }
+    else
+  if (argv[4][0] == '@')
+  {
+    ends_with = argv[4] + 1;
+  }
+    else
+  if (argv[4][0] == '+')
+  {
+    contains = argv[4] + 1;
+  }
 
   int where;
   int status = pcre_config(PCRE_CONFIG_JIT, &where);
@@ -175,9 +152,11 @@ int main(int argc, char *argv[])
     buffer[ptr++] = ch;
   }
 
-  printf("Easy Match\n");
+  printf("--- Easy Match Test --\n");
+  printf("[ %s %s ]\n", argv[2], argv[3]);
 
-  count = 0;
+  printf("Easy Match       ");
+
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
@@ -185,12 +164,9 @@ int main(int argc, char *argv[])
     if (result == 1) { count++; }
   }
   TIMER_STOP
-  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
-  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
 
-  printf("Easy Match (with len)\n");
+  printf("Easy Match (len) ");
 
-  count = 0;
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
@@ -198,28 +174,9 @@ int main(int argc, char *argv[])
     if (result == 1) { count++; }
   }
   TIMER_STOP
-  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
-  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
 
-  printf("strncmp()\n");
+  printf("PCRE             ");
 
-  int len = strlen(startswith);
-
-  count = 0;
-  TIMER_START
-  for (i = 0; i < line_count; i++)
-  {
-    int index = strlen(buffer + lines[i]) - len;
-
-    if (strcmp(buffer + lines[i] + index, startswith) == 0) { count++; }
-  }
-  TIMER_STOP
-  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
-  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
-
-  printf("PCRE\n");
-
-  count = 0;
   TIMER_START
   for (i = 0; i < line_count; i++)
   {
@@ -235,8 +192,48 @@ int main(int argc, char *argv[])
     if (regex_ret != PCRE_ERROR_NOMATCH) { count++; }
   }
   TIMER_STOP
-  //printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
-  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
+
+  if (starts_with != NULL)
+  {
+    printf("strncmp()        ");
+
+    int len = strlen(starts_with);
+
+    TIMER_START
+    for (i = 0; i < line_count; i++)
+    {
+      if (strncmp(buffer + lines[i], starts_with, len) == 0) { count++; }
+    }
+    TIMER_STOP
+  }
+    else
+  if (ends_with != NULL)
+  {
+    printf("strncmp()        ");
+
+    int len = strlen(ends_with);
+
+    TIMER_START
+    for (i = 0; i < line_count; i++)
+    {
+      int index = strlen(buffer + lines[i]) - len;
+
+      if (strcmp(buffer + lines[i] + index, ends_with) == 0) { count++; }
+    }
+    TIMER_STOP
+  }
+    else
+  if (contains != NULL)
+  {
+    printf("strstr()         ");
+
+    TIMER_START
+    for (i = 0; i < line_count; i++)
+    {
+      if (strstr(buffer + lines[i], contains) != NULL) { count++; }
+    }
+    TIMER_STOP
+  }
 
   if (regex_extra != NULL) { pcre_free(regex_extra); }
   pcre_free(regex_compiled);
