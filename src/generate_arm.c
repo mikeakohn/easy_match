@@ -140,8 +140,31 @@ int generate_equals(struct _generate *generate, char *match, int len, int not)
 
 int generate_contains(struct _generate *generate, char *match, int len, int not)
 {
-  generate_check_len(generate, len, STRLEN_ATLEAST);
+  int label;
+  int distance;
+
   generate_save_r0(generate);
+  generate_check_len(generate, len, STRLEN_ATLEAST);
+
+  label = generate->ptr;
+
+  if (generate_match(generate, match, len, not) == -1) { return -1; }
+
+  // beq 0: 0xfe,0xff,0xff,0x0a
+  generate_code(generate, 4, 0x08, 0xff, 0xff, 0x0a);
+
+  // add r0, r0, #1: 0x01,0x00,0x80,0xe2
+  generate_code(generate, 4, 0x01, 0x00, 0x80, 0xe2);
+
+  // ldr r4, [r0,r1]: 0x01,0x40,0x90,0xe7
+  generate_code(generate, 4, 0x01, 0x40, 0x90, 0xe7);
+
+  // cmp r4, #0: 0x00,0x00,0x54,0xe3
+  generate_code(generate, 4, 0x00, 0x00, 0x54, 0xe3);
+
+  distance = (generate->ptr + 8) - label;
+  // bne 0: 0xfe,0xff,0xff,0x1a
+  generate_code(generate, 4, distance & 0xff, (distance >> 8) & 0xff, (distance >> 16) & 0xff, 0x1a);
 
   // Restore r0
   // ldr r0, [sp,#-4]: 0x04,0x00,0x1d,0xe5
