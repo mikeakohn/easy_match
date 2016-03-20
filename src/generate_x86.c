@@ -308,6 +308,12 @@ int generate_skip(struct _generate *generate, int offset_insert, int offset_goto
   return -1;
 }
 
+int generate_string_const_add(struct _generate *generate, int offset)
+{
+  // Not used in x86 right now.
+  return 0;
+}
+
 int generate_finish(struct _generate *generate)
 {
   // mov eax, esi: 0x89 0xf0

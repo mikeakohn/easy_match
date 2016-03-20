@@ -35,6 +35,7 @@ struct _generate
   int strlen_is_far;
   int dest_reg_saved;
   int strings_ptr;
+  int strings_last;
   uint8_t strings[4096];
 };
 
@@ -47,6 +48,7 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
 int generate_and(struct _generate *generate);
 int generate_or(struct _generate *generate);
 int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg);
+int generate_string_const_add(struct _generate *generate, int offset);
 int generate_finish(struct _generate *generate);
 
 // Common functions

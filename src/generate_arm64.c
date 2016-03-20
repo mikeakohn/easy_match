@@ -56,6 +56,11 @@ int generate_skip(struct _generate *generate, int offset_insert, int offset_goto
   return -1;
 }
 
+int generate_string_const_add(struct _generate *generate, int offset)
+{
+  return -1;
+}
+
 int generate_finish(struct _generate *generate)
 {
   return -1;

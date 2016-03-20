@@ -175,12 +175,30 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
 
 int generate_and(struct _generate *generate)
 {
-  return -1;
+  int reg = (generate->reg + 3);
+
+  if (reg > 11) { return -1; }
+
+  // and r5, r5, r6: 0x06,0x50,0x05,0xe0
+  generate_code(generate, 4, 0x00 | (reg + 1), 0x00 | (reg << 4), 0x00 | reg, 0xe0);
+
+  generate->reg--;
+
+  return 0;
 }
 
 int generate_or(struct _generate *generate)
 {
-  return -1;
+  int reg = (generate->reg + 3);
+
+  if (reg > 11) { return -1; }
+
+  // orr r5, r5, r6: 0x06,0x50,0x85,0xe1
+  generate_code(generate, 4, 0x00 | (reg + 1), 0x00 | (reg << 4), 0x80 | reg, 0xe1);
+
+  generate->reg--;
+
+  return 0;
 }
 
 int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg)
@@ -188,11 +206,34 @@ int generate_skip(struct _generate *generate, int offset_insert, int offset_goto
   return -1;
 }
 
+int generate_string_const_add(struct _generate *generate, int offset)
+{
+  // add r3, r3, #0xff: 0xff,0x30,0x83,0xe2
+  generate_code(generate, 4, offset & 0xff, 0x30, 0x83, 0xe2);
+
+  if ((offset & 0xff00) != 0)
+  {
+    // add r3, r3, #0xff00: 0xff,0x3c,0x83,0xe2
+    generate_code(generate, 4, (offset >> 8) & 0xff, 0x3c, 0x83, 0xe2);
+  }
+
+  if ((offset & 0xff0000) != 0)
+  {
+    // add r3, r3, #0xff0000: 0xff,0x38,0x83,0xe2
+    generate_code(generate, 4, (offset >> 16) & 0xff, 0x38, 0x83, 0xe2);
+  }
+
+  return 0;
+}
+
 int generate_finish(struct _generate *generate)
 {
   // DEBUG
   // mov r0, r1: 0x01,0x00,0xa0,0xe1
   //generate_code(generate, 4, 0x01, 0x00, 0xa0, 0xe1);
+
+  // mov r0, r5: 0x05,0x00,0xa0,0xe1
+  generate_code(generate, 4, 0x05, 0x00, 0xa0, 0xe1);
 
   int push_list = push_list = (1 << generate->reg_max) - 1;
 
@@ -345,11 +386,13 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
 
     if (n == len)
     {
+      int reg = (generate->reg + 5) << 4;
+
       // moveq r0, #1: 0x01,0x00,0xa0,0x03
-      generate_code(generate, 4, 0x01, 0x00, 0xa0, 0x03);
+      generate_code(generate, 4, 0x01 ^ not, 0x00 | reg, 0xa0, 0x03);
 
       // movne r0, #0: 0x00,0x00,0xa0,0x13
-      generate_code(generate, 4, 0x00, 0x00, 0xa0, 0x13);
+      generate_code(generate, 4, 0x00 ^ not, 0x00 | reg, 0xa0, 0x13);
     }
       else
     {

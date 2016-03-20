@@ -123,6 +123,7 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
     return 1;
   }
 
+  generate_string_const_add(generate, generate->strings_ptr - generate->strings_last);
   memcpy(generate->strings + generate->strings_ptr, match, len);
 
   switch(function)
@@ -146,6 +147,7 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
       return 1;
   }
 
+  generate->strings_last = generate->strings_ptr;
   generate->strings_ptr += (len + 3) & 0xfffffffc;
 
   token_type = tokens_next(tokens);
