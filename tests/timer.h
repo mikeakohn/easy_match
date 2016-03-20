@@ -36,7 +36,8 @@ union _perftime
   ( \
     "rdtsc" : "=a" (perf_end.split.lo), "=d" (perf_end.split.hi) \
   ); \
-  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count);
+  printf("count=%d cpu=%ld\n", count, perf_end.count - perf_start.count); \
+  fflush(stdout);
 
 #else
 
@@ -46,7 +47,8 @@ union _perftime
 
 #define TIMER_STOP \
   clock_gettime(CLOCK_MONOTONIC, &tp_stop); \
-  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop));
+  printf("count=%d msec=%f\n", count, diff_time(&tp_start, &tp_stop)); \
+  fflush(stdout);
 
 #endif
 

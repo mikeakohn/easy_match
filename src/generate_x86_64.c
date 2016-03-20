@@ -146,6 +146,7 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
 {
   int label;
   int distance;
+  int sub_len = len - 1;
 
   generate_save_rdi(generate);
   generate_set_reg(generate, not);
@@ -154,16 +155,16 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   // mov ecx, esi: 0x89 0xf1
   generate_code(generate, 2, 0x89, 0xf1);
 
-  if (len < 128)
+  if (sub_len < 128)
   {
     // sub ecx, 1: 0x83 0xe9 0x01
-    generate_code(generate, 3, 0x83, 0xe9, len);
+    generate_code(generate, 3, 0x83, 0xe9, sub_len);
   }
     else
   {
     // sub ecx, 128: 0x81 0xe9 0x80 0x00 0x00 0x00
     generate_code(generate, 6, 0x81, 0xe9,
-      len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
+      sub_len & 0xff, (sub_len >> 8) & 0xff, (sub_len >> 16) & 0xff, (sub_len >> 24) & 0xff);
   }
 
   label = generate->ptr;
