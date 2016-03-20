@@ -1,7 +1,7 @@
 include config.mak
 
 DEBUG=-DDEBUG -g
-CFLAGS=-O3 -Wall $(DEBUG)
+#CFLAGS=-O3 -Wall $(DEBUG)
 CC=gcc
 #CC=i686-mingw32-gcc
 

@@ -274,6 +274,8 @@ int generate_and(struct _generate *generate)
       break;
   }
 
+  generate->reg--;
+
   return 0;
 }
 
@@ -300,12 +302,83 @@ int generate_or(struct _generate *generate)
       break;
   }
 
+  generate->reg--;
+
   return 0;
 }
 
 int generate_skip(struct _generate *generate, int offset_insert, int offset_goto, int reg, int skip_value, int pop_to_reg)
 {
-  return -1;
+#if 0
+  int distance;
+  int ptr_save = generate->ptr;
+  uint8_t code[64];
+
+  int count = generate_test_reg(generate, reg);
+  if (count == 0) { return -1; }
+
+  if (reg != pop_to_reg)
+  {
+    int condition = skip_value == 1 ? 0x45 : 0x44;
+    int regs = (reg - 1);
+    int opcode = 0x49;
+
+    if (pop_to_reg == 0)
+    {
+      regs |= 0xc0;
+    }
+      else
+    {
+      regs |= pop_to_reg - 1;
+      opcode = 0x4d;
+    }
+
+    // cmov[z/nz] pop_reg, reg
+    generate_code(generate, 4, opcode, 0x0f, condition, regs);
+  }
+
+  distance = offset_goto - offset_insert;
+
+  if (distance < 128)
+  {
+    if (skip_value == 0)
+    {
+      // jz skip_exit: 0x74, 0x00
+      generate_code(generate, 2, 0x74, distance);
+    }
+      else
+    {
+      // jnz label: 0x75 label
+      generate_code(generate, 2, 0x75, distance);
+    }
+  }
+    else
+  {
+    if (skip_value == 0)
+    {
+      // jz label: 0x0f 0x84 label
+      generate_code(generate, 6, 0x0f, 0x84,
+        distance & 0xff, (distance >> 8) & 0xff,
+        (distance >> 16) & 0xff, (distance >> 24) & 0xff);
+    }
+      else
+    {
+      // jnz label: 0x0f 0x85 label
+      generate_code(generate, 6, 0x0f, 0x85,
+        distance & 0xff, (distance >> 8) & 0xff,
+        (distance >> 16) & 0xff, (distance >> 24) & 0xff);
+    }
+  }
+
+  int size = generate->ptr - ptr_save;
+  generate->ptr = ptr_save;
+
+  memcpy(code, generate->code + generate->ptr, size);
+  generate_insert(generate, offset_insert, size);
+  memcpy(generate->code + offset_insert, code, size);
+#endif
+
+  return 0;
 }
 
 int generate_string_const_add(struct _generate *generate, int offset)
