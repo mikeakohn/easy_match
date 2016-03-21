@@ -123,7 +123,9 @@ static int compile_function(struct _generate *generate, struct _tokens *tokens, 
     return 1;
   }
 
-  generate_string_const_add(generate, generate->strings_ptr - generate->strings_last);
+  int const_add = generate->strings_ptr - generate->strings_last;
+  if (const_add != 0) { generate_string_const_add(generate, const_add); }
+
   memcpy(generate->strings + generate->strings_ptr, match, len);
 
   switch(function)
