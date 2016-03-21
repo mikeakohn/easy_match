@@ -161,8 +161,8 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   // add r0, r0, #1: 0x01,0x00,0x80,0xe2
   generate_code(generate, 4, 0x01, 0x00, 0x80, 0xe2);
 
-  // ldr r4, [r0,r1]: 0x01,0x40,0x90,0xe7
-  generate_code(generate, 4, 0x01, 0x40, 0x90, 0xe7);
+  // ldrb r4, [r0,#4]: 0x04,0x40,0xd0,0xe5
+  generate_code(generate, 4, (len - 1) & 0xff, 0x40 | (((len - 1) >> 8) & 0x7), 0xd0, 0xe5);
 
   // cmp r4, #0: 0x00,0x00,0x54,0xe3
   generate_code(generate, 4, 0x00, 0x00, 0x54, 0xe3);
@@ -374,6 +374,9 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
   int jmp_exit_count = 0;
   int distance;
   int n;
+
+  // Can't support matching bigger than 2047 right now.
+  if (len > 2047) { return -1; }
 
   // Reg must be r4-r11 
   if (generate->reg > 7) { return -1; }
