@@ -25,6 +25,24 @@ then
   MACHINE='arm'
 fi
 
+if [ "${MACHINE}" == "amd64" ]
+then
+  MACHINE='x86_64'
+fi
+
+a=`gcc &> /dev/null`
+
+if [ $? != 0 ]
+then
+  CC=cc
+fi
+
+if [ -e /usr/local/include/pcre.h ]
+then
+  CFLAGS="-I/usr/local/include ${CFLAGS}"
+  LDFLAGS="-L/usr/local/lib ${LDFLAGS}"
+fi
+
 for option in $@; do
 
   optval="${option#*=}"

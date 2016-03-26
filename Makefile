@@ -2,7 +2,6 @@ include config.mak
 
 DEBUG=-DDEBUG -g
 #CFLAGS=-O3 -Wall $(DEBUG)
-CC=gcc
 #CC=i686-mingw32-gcc
 
 default:
@@ -12,7 +11,7 @@ test_tokens:
 	$(CC) -o test_tokens tests/test_tokens.c build/tokens.o -Isrc $(CFLAGS)
 
 compare:
-	$(CC) -o compare_speed tests/compare_speed.c build/*.o -Isrc -lpcre -lrt $(CFLAGS)
+	$(CC) -o compare_speed tests/compare_speed.c build/*.o -Isrc ${LDFLAGS} $(CFLAGS) -lpcre -lrt
 
 clean:
 	@rm -f build/*.o
