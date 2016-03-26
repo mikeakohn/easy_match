@@ -30,6 +30,11 @@ then
   MACHINE='x86_64'
 fi
 
+if [ "${MACHINE}" == "i686" ]
+then
+  MACHINE='x86'
+fi
+
 a=`gcc &> /dev/null`
 
 if [ $? != 0 ]
