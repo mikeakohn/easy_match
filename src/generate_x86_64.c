@@ -21,10 +21,18 @@ static int generate_save_rdi(struct _generate *generate);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_test_reg(struct _generate *generate, int reg);
 static int generate_set_reg(struct _generate *generate, int value);
+static int generate_strncmp(struct _generate *generate, char *match, int len, int not);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
 {
+  if (generate->use_strncmp == 1)
+  {
+    // mov qword rsi, 0x7ffff8ffff1111: 0x48,0xbe,0x11,0x11,0xff,0xff,...
+    generate_code(generate, 10, 0x48, 0xbe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+printf("here\n");
+  }
+
 #ifdef WINDOWS
   // mov [rsp-24], rcx: 0x48 0x89 0x4c 0x24 0xe8
   //generate_code(generate, 5, 0x48, 0x89, 0x4c, 0x24, 0xe8);
@@ -35,7 +43,7 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
   // mov rdi, rcx: 0x48 0x89 0xcf
   generate_code(generate, 3, 0x48, 0x89, 0xcf);
 
-  if (option != 1)
+  if (option != 1 && generate->use_strncmp == 0)
   {
     // mov rsi, rdx: 0x48 0x89 0xd6
     generate_code(generate, 3, 0x48, 0x89, 0xd6);
@@ -45,7 +53,7 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
   // mov [rsp-8], rbx: 0x48 0x89 0x5c 0x24 0xf8
   generate_code(generate, 5, 0x48, 0x89, 0x5c, 0x24, 0xf8);
 
-  if (option != 1)
+  if (option != 1 && generate->use_strncmp == 0)
   {
     // mov rsi, rdi: 0x48 0x89 0xfe
     generate_code(generate, 3, 0x48, 0x89, 0xfe);
@@ -73,8 +81,20 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
 int generate_starts_with(struct _generate *generate, char *match, int len, int not)
 {
-  generate_check_len(generate, len, STRLEN_ATLEAST);
-  if (generate_match(generate, match, len, not) == -1) { return -1; }
+  if (generate->use_strncmp == 0)
+  {
+    generate_check_len(generate, len, STRLEN_ATLEAST);
+    if (generate_match(generate, match, len, not) == -1) { return -1; }
+  }
+    else
+  {
+    generate_save_rdi(generate);
+    if (generate_strncmp(generate, match, len, not) == -1) { return -1; }
+
+    // Restore rdi.
+    // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+    generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+  }
 
   return 0;
 }
@@ -83,7 +103,6 @@ int generate_ends_with(struct _generate *generate, char *match, int len, int not
 {
   generate_check_len(generate, len, STRLEN_ATLEAST);
   if (generate_mov_rdi_end(generate, len) != 0) { return -1; }
-
   if (generate_match(generate, match, len, not) == -1) { return -1; }
 
   // Restore rdi.
@@ -136,8 +155,20 @@ int generate_match_at(struct _generate *generate, char *match, int len, int inde
 
 int generate_equals(struct _generate *generate, char *match, int len, int not)
 {
-  generate_check_len(generate, len, STRLEN_EQUALS);
-  if (generate_match(generate, match, len, not) == -1) { return -1; }
+  if (generate->use_strncmp == 0)
+  {
+    generate_check_len(generate, len, STRLEN_EQUALS);
+    if (generate_match(generate, match, len, not) == -1) { return -1; }
+  }
+    else
+  {
+    generate_save_rdi(generate);
+    if (generate_strncmp(generate, match, len, not) == -1) { return -1; }
+
+    // Restore rdi.
+    // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
+    generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xf0);
+  }
 
   return 0;
 }
@@ -397,6 +428,25 @@ int generate_finish(struct _generate *generate)
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
 
+  if (generate->use_strncmp == 1)
+  {
+    uint8_t *strings = generate->code + generate->ptr;
+
+    memcpy(strings, generate->strings, generate->strings_ptr);
+
+    generate->code[2] = ((uint64_t)strings) & 0xff;
+    generate->code[3] = (((uint64_t)strings) >> 8) & 0xff;
+    generate->code[4] = (((uint64_t)strings) >> 16) & 0xff;
+    generate->code[5] = (((uint64_t)strings) >> 24) & 0xff;
+
+    generate->code[6] = (((uint64_t)strings) >> 32) & 0xff;
+    generate->code[7] = (((uint64_t)strings) >> 40) & 0xff;
+    generate->code[8] = (((uint64_t)strings) >> 48) & 0xff;
+    generate->code[9] = (((uint64_t)strings) >> 56) & 0xff;
+
+    generate->code += generate->strings_ptr;
+  }
+
   return 0;
 }
 
@@ -540,6 +590,45 @@ static int generate_set_reg(struct _generate *generate, int value)
       return 6;
     }
   }
+}
+
+static int generate_strncmp(struct _generate *generate, char *match, int len, int not)
+{
+  int label;
+  int distance;
+
+  if (generate->need_cld == 1)
+  {
+    // cld: 0xfc
+    generate_code(generate, 1, 0xfc);
+  }
+
+  generate_set_reg(generate, not ^ 1);
+
+  // mov ecx, 1: 0xb9,0x01,0x00,0x00,0x00
+  generate_code(generate, 5, 0xb9, len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) && 0xff);
+
+  // repz cmpsb: 0xf3,0xa6
+  generate_code(generate, 2, 0xf3, 0xa6);
+
+  // jnz label: 0x75 label
+  //generate_code(generate, 2, 0x75, 0);
+
+   // jz exit: 0x74 0x05
+  generate_code(generate, 2, 0x74, 0x00);
+
+  label = generate->ptr;
+
+  // Set value for didn't find match
+  generate_set_reg(generate, not);
+
+  distance = generate->ptr - label;
+  generate->code[label - 1] = distance;
+
+  // add rsi, rcx: 0x48,0x01,0xce
+  generate_code(generate, 3, 0x48, 0x01, 0xce);
+
+  return 0;
 }
 
 static int generate_match(struct _generate *generate, char *match, int len, int not)

@@ -338,7 +338,6 @@ void *compiler_generate(char *code, int option)
 
   generate.code = (uint8_t *)match;
 
-  generate_init(&generate, (uint8_t *)match, option);
   tokens_init(&tokens, code);
 
   while(1)
@@ -354,6 +353,22 @@ void *compiler_generate(char *code, int option)
     else if (strcmp(tokens.next, "and") == 0) { generate.and++; }
     else if (strcmp(tokens.next, "or") == 0) { generate.or++; }
   }
+
+  if (generate.ends_with != 0 ||
+      generate.match_at != 0 ||
+      generate.contains != 0 ||
+      generate.equals + generate.starts_with > 5)
+  {
+    generate.use_strncmp = 0;
+  }
+    else
+  {
+    // Avoid doing an strlen() before the compare and use a slower
+    // byte by byte comparison.
+    generate.use_strncmp = 1;
+  }
+
+  generate_init(&generate, (uint8_t *)match, option);
 
   tokens_reset(&tokens);
 

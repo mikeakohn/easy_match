@@ -36,6 +36,8 @@ struct _generate
   int dest_reg_saved;
   int strings_ptr;
   int strings_last;
+  uint8_t use_strncmp : 1;
+  uint8_t need_cld : 1;
   uint8_t strings[4096];
 };
 
