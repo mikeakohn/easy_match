@@ -20,9 +20,13 @@
 // r4 = temp
 // r5-r11 = result stack
 
+#define TYPE_STRNCMP 1
+#define TYPE_STRCMP 0
+
 static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_save_r0(struct _generate *generate);
 static int generate_mov_r0_end(struct _generate *generate, int len);
+static int generate_strncmp(struct _generate *generate, char *match, int len, int not, int type);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
@@ -42,7 +46,7 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
   // stm sp, { r4,r5,r6,r7,r8,r9,r10,r11 }: 0xf0,0x0f,0x0d,0xe9
   generate_code(generate, 4, 0xf0, 0x0f, 0x2d, 0xe9);
 
-  if (option != 1)
+  if (option != 1 && generate->use_strncmp == 0)
   {
     // mov r1, #0: 0x00,0x10,0xa0,0xe3
     generate_code(generate, 4, 0x00, 0x10, 0xa0, 0xe3);
@@ -65,8 +69,20 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
 int generate_starts_with(struct _generate *generate, char *match, int len, int not)
 {
-  generate_check_len(generate, len, STRLEN_ATLEAST);
-  if (generate_match(generate, match, len, not) == -1) { return -1; }
+  if (generate->use_strncmp == 0)
+  {
+    generate_check_len(generate, len, STRLEN_ATLEAST);
+    if (generate_match(generate, match, len, not) == -1) { return -1; }
+  }
+    else
+  {
+    generate_save_r0(generate);
+    if (generate_strncmp(generate, match, len, not, TYPE_STRNCMP) == -1) { return -1; }
+
+    // Restore r0
+    // ldr r0, [sp,#-4]: 0x04,0x00,0x1d,0xe5
+    generate_code(generate, 4, 0x04, 0x00, 0x1d, 0xe5);
+  }
 
   return 0;
 }
@@ -132,8 +148,20 @@ int generate_match_at(struct _generate *generate, char *match, int len, int inde
 
 int generate_equals(struct _generate *generate, char *match, int len, int not)
 {
-  generate_check_len(generate, len, STRLEN_EQUALS);
-  if (generate_match(generate, match, len, not) == -1) { return -1; }
+  if (generate->use_strncmp == 0)
+  {
+    generate_check_len(generate, len, STRLEN_EQUALS);
+    if (generate_match(generate, match, len, not) == -1) { return -1; }
+  }
+    else
+  {
+    generate_save_r0(generate);
+    if (generate_strncmp(generate, match, len, not, TYPE_STRCMP) == -1) { return -1; }
+
+    // Restore r0
+    // ldr r0, [sp,#-4]: 0x04,0x00,0x1d,0xe5
+    generate_code(generate, 4, 0x04, 0x00, 0x1d, 0xe5);
+  }
 
   return 0;
 }
@@ -363,6 +391,51 @@ static int generate_mov_r0_end(struct _generate *generate, int len)
       // orr r4, r4, #0xff00: 0xff,0x4c,0x84,0xe3
       generate_code(generate, 4, (len >> 8) & 0xff, 0x4c, 0x84, 0xe3);
     }
+  }
+
+  return 0;
+}
+
+static int generate_strncmp(struct _generate *generate, char *match, int len, int not, int type)
+{
+  if (type == TYPE_STRCMP) { len++; }
+
+  // mov r1, #0: 0x00,0x10,0xa0,0xe3
+  generate_code(generate, 4, len, 0x10, 0xa0, 0xe3);
+
+  // ldrb r2, [r0], #1!: 0x01,0x20,0xd0,0xe4
+  generate_code(generate, 4, 0x01, 0x20, 0xf0, 0xe4);
+
+  // ldrb r4, [r3], #1!: 0x01,0x40,0xd3,0xe4
+  generate_code(generate, 4, 0x01, 0x40, 0xf3, 0xe4);
+
+  // cmp r2, r4: 0x04,0x00,0x52,0xe1
+  generate_code(generate, 4, 0x04, 0x00, 0x52, 0xe1);
+
+  // bne 0: 0xfe,0xff,0xff,0x1a
+  generate_code(generate, 4, 0x01, 0x00, 0x00, 0x1a);
+
+  // subs r1, r1, #1: 0x01,0x10,0x51,0xe2
+  generate_code(generate, 4, 0x01, 0x10, 0x51, 0xe2);
+
+  // bne 0: 0xfe,0xff,0xff,0x1a
+  generate_code(generate, 4, 0xf9, 0xff, 0xff, 0x1a);
+
+  int reg = (generate->reg + 5) << 4;
+
+  // moveq r0, #1: 0x01,0x00,0xa0,0x03
+  generate_code(generate, 4, 0x01 ^ not, 0x00 | reg, 0xa0, 0x03);
+
+  // movne r0, #0: 0x00,0x00,0xa0,0x13
+  generate_code(generate, 4, 0x00 ^ not, 0x00 | reg, 0xa0, 0x13);
+
+  // add r3, r3, r1: 0x01,0x30,0x83,0xe0
+  generate_code(generate, 4, 0x01, 0x30, 0x83, 0xe0);
+
+  if (type == TYPE_STRNCMP)
+  {
+    // add r3, r3, #1: 0x01,0x30,0x83,0xe2
+    generate_code(generate, 4, 0x01, 0x30, 0x83, 0xe2);
   }
 
   return 0;
