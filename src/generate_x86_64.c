@@ -16,12 +16,15 @@
 
 #include "generate.h"
 
+#define TYPE_STRNCMP 1
+#define TYPE_STRCMP 0
+
 static int generate_check_len(struct _generate *generate, int len, int equals);
 static int generate_save_rdi(struct _generate *generate);
 static int generate_mov_rdi_end(struct _generate *generate, int len);
 static int generate_test_reg(struct _generate *generate, int reg);
 static int generate_set_reg(struct _generate *generate, int value);
-static int generate_strncmp(struct _generate *generate, char *match, int len, int not);
+static int generate_strncmp(struct _generate *generate, char *match, int len, int not, int type);
 static int generate_match(struct _generate *generate, char *match, int len, int not);
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
@@ -89,7 +92,7 @@ int generate_starts_with(struct _generate *generate, char *match, int len, int n
     else
   {
     generate_save_rdi(generate);
-    if (generate_strncmp(generate, match, len, not) == -1) { return -1; }
+    if (generate_strncmp(generate, match, len, not, TYPE_STRNCMP) == -1) { return -1; }
 
     // Restore rdi.
     // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
@@ -163,7 +166,7 @@ int generate_equals(struct _generate *generate, char *match, int len, int not)
     else
   {
     generate_save_rdi(generate);
-    if (generate_strncmp(generate, match, len, not) == -1) { return -1; }
+    if (generate_strncmp(generate, match, len, not, TYPE_STRCMP) == -1) { return -1; }
 
     // Restore rdi.
     // mov rdi, [rsp-16]: 0x48 0x8b 0x7c 0x24 0xf0
@@ -592,10 +595,12 @@ static int generate_set_reg(struct _generate *generate, int value)
   }
 }
 
-static int generate_strncmp(struct _generate *generate, char *match, int len, int not)
+static int generate_strncmp(struct _generate *generate, char *match, int len, int not, int type)
 {
   int label;
   int distance;
+
+  if (type == TYPE_STRCMP) { len++; }
 
   if (generate->need_cld == 1)
   {
@@ -627,6 +632,13 @@ static int generate_strncmp(struct _generate *generate, char *match, int len, in
 
   // add rsi, rcx: 0x48,0x01,0xce
   generate_code(generate, 3, 0x48, 0x01, 0xce);
+
+  // FIXME - This could be optimized by not storing the NULL terminator.
+  if (type == TYPE_STRNCMP)
+  {
+    // inc esi: 0xff,0xc6
+    generate_code(generate, 2, 0xff, 0xc6);
+  }
 
   return 0;
 }

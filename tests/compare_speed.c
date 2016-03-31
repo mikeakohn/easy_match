@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
   char *starts_with = NULL;
   char *ends_with = NULL;
   char *contains = NULL;
+  char *equals = NULL;
 
   if (argc != 5)
   {
@@ -71,6 +72,11 @@ int main(int argc, char *argv[])
   if (argv[4][0] == '+')
   {
     contains = argv[4] + 1;
+  }
+    else
+  if (argv[4][0] == '=')
+  {
+    equals = argv[4] + 1;
   }
 
   int where;
@@ -231,6 +237,18 @@ int main(int argc, char *argv[])
     for (i = 0; i < line_count; i++)
     {
       if (strstr(buffer + lines[i], contains) != NULL) { count++; }
+    }
+    TIMER_STOP
+  }
+    else
+  if (equals != NULL)
+  {
+    printf("strcmp()         ");
+
+    TIMER_START
+    for (i = 0; i < line_count; i++)
+    {
+      if (strcmp(buffer + lines[i], equals) == 0) { count++; }
     }
     TIMER_STOP
   }
