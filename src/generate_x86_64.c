@@ -62,6 +62,8 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
     // Need to do an strlen()
 
+//#define OLDWAY
+#ifdef OLDWAY
     // cmp byte [rsi], 0: 0x80 0x3e 0x00
     generate_code(generate, 3, 0x80, 0x3e, 0x00);
 
@@ -73,6 +75,20 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
 
     // jmp repeat: 0xEB 0xF6
     generate_code(generate, 2, 0xeb, 0xf6);
+#else
+
+    // inc rsi: 0x48 0xff 0xc6
+    generate_code(generate, 3, 0x48, 0xff, 0xc6);
+
+    // cmp byte [rsi-1], 0: 0x80,0x7e,0xff,0x00
+    generate_code(generate, 4, 0x80, 0x7e, 0xff, 0x00);
+
+    // jnz exit: 0x75 0x03
+    generate_code(generate, 2, 0x75, 0xf7);
+
+    // dec rsi: 0x48,0xff,0xce
+    generate_code(generate, 3, 0x48, 0xff, 0xce);
+#endif
 
     // sub rsi, rdi: 0x48 0x29 0xfe
     generate_code(generate, 3, 0x48, 0x29, 0xfe);

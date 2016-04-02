@@ -15,7 +15,7 @@ compare:
 
 clean:
 	@rm -f build/*.o
-	@rm -f easy_match
+	@rm -f easy_match easy_match.exe
 	@rm -f test_tokens compare_speed
 
 
