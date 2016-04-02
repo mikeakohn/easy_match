@@ -3,7 +3,7 @@
 [http://www.mikekohn.net/software/easy_match.php](http://www.mikekohn.net/software/easy_match.php)
 
 Library for doing for simple text searches similar to REGEX but with simpler syntax.  To maximize performance,
-a JIT compiler turns matching commands into assembly for x86_64, x86, and ARM. Easy Match will use syntax
+a JIT compiler turns matching commands into assembly for x86_64, x86, and ARM (tested on Raspberry Pi). Easy Match will use syntax
 such as the following:
 
 (starts_with('asdf') or starts_with('1111')) and ends_with('7890')
