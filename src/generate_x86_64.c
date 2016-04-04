@@ -626,7 +626,7 @@ static int generate_strncmp(struct _generate *generate, char *match, int len, in
   generate_set_reg(generate, not ^ 1);
 
   // mov ecx, 1: 0xb9,0x01,0x00,0x00,0x00
-  generate_code(generate, 5, 0xb9, len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) && 0xff);
+  generate_code(generate, 5, 0xb9, len & 0xff, (len >> 8) & 0xff, (len >> 16) & 0xff, (len >> 24) & 0xff);
 
   // repz cmpsb: 0xf3,0xa6
   generate_code(generate, 2, 0xf3, 0xa6);
