@@ -341,7 +341,7 @@ void *compiler_generate(char *code, int option)
     return NULL;
   }
 #else
-  match = VirtualAlloc(NULL, MAX_CODE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+  match = VirtualAlloc(NULL, MAX_CODE_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
   if (match == NULL)
   {
@@ -409,7 +409,7 @@ void *compiler_generate(char *code, int option)
 
 //#define DUMP_CODE
 #ifdef DUMP_CODE
-  FILE *out = fopen("/tmp/debug.bin", "wb");
+  FILE *out = fopen("debug.bin", "wb");
   fwrite(generate.code, 1, generate.ptr, out);
   fclose(out);
 #endif

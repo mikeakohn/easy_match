@@ -29,6 +29,11 @@ static int generate_match(struct _generate *generate, char *match, int len, int 
 
 int generate_init(struct _generate *generate, uint8_t *code, int option)
 {
+#ifdef WINDOWS
+  // mov [rsp-0x18], rsi: 0x48,0x89,0x74,0x24,0xe8
+  generate_code(generate, 5, 0x48, 0x89, 0x74, 0x24, 0xe8);
+#endif
+
   if (generate->use_strncmp == 1)
   {
     // mov qword rsi, 0x7ffff8ffff1111: 0x48,0xbe,0x11,0x11,0xff,0xff,...
@@ -36,11 +41,8 @@ int generate_init(struct _generate *generate, uint8_t *code, int option)
   }
 
 #ifdef WINDOWS
-  // mov [rsp-24], rcx: 0x48 0x89 0x4c 0x24 0xe8
-  //generate_code(generate, 5, 0x48, 0x89, 0x4c, 0x24, 0xe8);
-
-  // mov [rsp-32], rdx: 0x48 0x89 0x54 0x24 0xe0
-  //generate_code(generate, 5, 0x48, 0x89, 0x54, 0x24, 0xe0);
+  // mov [rsp-0x20], rdi: 0x48,0x89,0x7c,0x24,0xe0
+  generate_code(generate, 5, 0x48, 0x89, 0x7c, 0x24, 0xe0);
 
   // mov rdi, rcx: 0x48 0x89 0xcf
   generate_code(generate, 3, 0x48, 0x89, 0xcf);
@@ -443,24 +445,37 @@ int generate_finish(struct _generate *generate)
   // mov rbx, [rsp-8]: 0x48 0x8b 0x5c 0x24 0xf8
   generate_code(generate, 5, 0x48, 0x8b, 0x5c, 0x24, 0xf8);
 
+#ifdef WINDOWS
+  // mov rsi, [rsp-0x18]: 0x48,0x8b,0x74,0x24,0xe8
+  generate_code(generate, 5, 0x48, 0x8b, 0x74, 0x24, 0xe8);
+
+  // mov rdi, [rsp-0x20]: 0x48,0x8b,0x7c,0x24,0xe0
+  generate_code(generate, 5, 0x48, 0x8b, 0x7c, 0x24, 0xe0);
+#endif
+
   // ret: 0xc3
   generate_code(generate, 1, 0xc3);
 
   if (generate->use_strncmp == 1)
   {
     uint8_t *strings = generate->code + generate->ptr;
+    uint32_t index = 2;
+
+#ifdef WINDOWS
+    index += 5;
+#endif
 
     memcpy(strings, generate->strings, generate->strings_ptr);
 
-    generate->code[2] = ((uint64_t)strings) & 0xff;
-    generate->code[3] = (((uint64_t)strings) >> 8) & 0xff;
-    generate->code[4] = (((uint64_t)strings) >> 16) & 0xff;
-    generate->code[5] = (((uint64_t)strings) >> 24) & 0xff;
+    generate->code[index+0] = ((uint64_t)strings) & 0xff;
+    generate->code[index+1] = (((uint64_t)strings) >> 8) & 0xff;
+    generate->code[index+2] = (((uint64_t)strings) >> 16) & 0xff;
+    generate->code[index+3] = (((uint64_t)strings) >> 24) & 0xff;
 
-    generate->code[6] = (((uint64_t)strings) >> 32) & 0xff;
-    generate->code[7] = (((uint64_t)strings) >> 40) & 0xff;
-    generate->code[8] = (((uint64_t)strings) >> 48) & 0xff;
-    generate->code[9] = (((uint64_t)strings) >> 56) & 0xff;
+    generate->code[index+4] = (((uint64_t)strings) >> 32) & 0xff;
+    generate->code[index+5] = (((uint64_t)strings) >> 40) & 0xff;
+    generate->code[index+6] = (((uint64_t)strings) >> 48) & 0xff;
+    generate->code[index+7] = (((uint64_t)strings) >> 56) & 0xff;
 
     generate->ptr += generate->strings_ptr;
   }
