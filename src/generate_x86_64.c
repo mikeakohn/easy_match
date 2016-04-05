@@ -462,7 +462,7 @@ int generate_finish(struct _generate *generate)
     generate->code[8] = (((uint64_t)strings) >> 48) & 0xff;
     generate->code[9] = (((uint64_t)strings) >> 56) & 0xff;
 
-    generate->code += generate->strings_ptr;
+    generate->ptr += generate->strings_ptr;
   }
 
   return 0;
