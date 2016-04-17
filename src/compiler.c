@@ -404,8 +404,14 @@ void *compiler_generate(char *code, int option)
   if (error == 1)
   {
     compiler_free(match);
-    match = NULL;
+    return NULL;
   }
+
+#ifndef WINDOWS
+  mprotect(match, MAX_CODE_SIZE, PROT_EXEC);
+#else
+  VirtualProtect(match, MAX_CODE_SIZE, PAGE_EXECUTE, NULL);
+#endif
 
 //#define DUMP_CODE
 #ifdef DUMP_CODE
