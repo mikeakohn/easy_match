@@ -8,9 +8,13 @@ VPATH=../src:../tests
 
 default: $(OBJECTS) timer.o
 	$(CC) -o ../easy_match ../tests/easy_match.c $(OBJECTS) -I../src $(CFLAGS)
+	$(CC) -o ../libeasy_match.so $(OBJECTS) -I../src $(CFLAGS) -shared -fPIC
 
 %.o: %.c %.h
-	$(CC) -c $< -o $*.o $(CFLAGS)
+	$(CC) -c $< -o $*.o $(CFLAGS) -fPIC
+
+%.o: %.c
+	$(CC) -c $< -o $*.o $(CFLAGS) -fPIC
 
 clean:
 	@rm -f *.o
