@@ -332,23 +332,13 @@ void *compiler_generate(char *code, int option)
 
   memset(&generate, 0, sizeof(generate));
 
-#ifndef WINDOWS
-  match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+  match = mmap(NULL, MAX_CODE_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
   if (match == MAP_FAILED)
   {
     perror("mmap() failed");
     return NULL;
   }
-#else
-  match = VirtualAlloc(NULL, MAX_CODE_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-
-  if (match == NULL)
-  {
-    perror("VirtualAlloc() failed");
-    return NULL;
-  }
-#endif
 
   generate.code = (uint8_t *)match;
 
@@ -407,11 +397,7 @@ void *compiler_generate(char *code, int option)
     return NULL;
   }
 
-#ifndef WINDOWS
   mprotect(match, MAX_CODE_SIZE, PROT_EXEC);
-#else
-  VirtualProtect(match, MAX_CODE_SIZE, PAGE_EXECUTE, NULL);
-#endif
 
 //#define DUMP_CODE
 #ifdef DUMP_CODE
@@ -425,16 +411,6 @@ void *compiler_generate(char *code, int option)
 
 void compiler_free(void *match)
 {
-#ifndef WINDOWS
   munmap(match, MAX_CODE_SIZE);
-#else
-  //VirtualFree(match, MAX_CODE_SIZE, MEM_DECOMMIT);
-  int ret = VirtualFree(match, 0, MEM_RELEASE);
-
-  if (ret == 0)
-  {
-    printf("VirtualFree() failed\n");
-  }
-#endif
 }
 

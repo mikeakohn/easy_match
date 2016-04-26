@@ -21,5 +21,18 @@ typedef int (*match_with_len_t)(char*, int);
 void *compiler_generate(char *code, int option);
 void compiler_free(void *function);
 
+// Compatibility macros for Windows
+#ifdef WINDOWS
+#define PROT_EXEC PAGE_EXECUTE
+#define PROT_WRITE PAGE_READWRITE
+#define PROT_READ 0
+#define MAP_FAILED NULL
+
+#define mmap(addr, length, prot, flags, fd, offset) \
+  VirtualAlloc(addr, length, MEM_RESERVE | MEM_COMMIT, prot);
+#define mprotect(addr, len, prot) VirtualProtect(addr, len, prot, NULL)
+#define munmap(addr, len) VirtualFree(addr, 0, MEM_RELEASE)
+#endif
+
 #endif
 
