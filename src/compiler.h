@@ -24,7 +24,7 @@ void compiler_free(void *function);
 // Compatibility macros for Windows
 #ifdef WINDOWS
 #define PROT_EXEC PAGE_EXECUTE
-#define PROT_WRITE PAGE_READWRITE
+#define PROT_WRITE PAGE_EXECUTE_READWRITE
 #define PROT_READ 0
 #define MAP_FAILED NULL
 
