@@ -32,6 +32,7 @@ void compiler_free(void *function);
   VirtualAlloc(addr, length, MEM_RESERVE | MEM_COMMIT, prot);
 #define mprotect(addr, len, prot) VirtualProtect(addr, len, prot, NULL)
 #define munmap(addr, len) VirtualFree(addr, 0, MEM_RELEASE)
+#define alloca _alloca
 #endif
 
 #endif
