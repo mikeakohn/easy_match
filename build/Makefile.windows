@@ -5,6 +5,6 @@ default:
 	cl.exe /Fo /c -D_CRT_BUILD_DESKTOP_APP=0 -DWINDOWS ../src/compiler.c
 	cl.exe /Fo /c -D_CRT_BUILD_DESKTOP_APP=0 -DWINDOWS ../src/generate.c
 	cl.exe /Fo /c -D_CRT_BUILD_DESKTOP_APP=0 -DWINDOWS ../src/generate_x86_64.c
-	cl.exe /Fo -I../src -D_CRT_BUILD_DESKTOP_APP=0 -DWINDOWS tokens.obj compiler.obj generate.obj generate_x86_64.obj ../tests/easy_match.c
+	cl.exe /Fo -I../src -D_CRT_BUILD_DESKTOP_APP=0 -DWINDOWS ../tests/easy_match.c tokens.obj compiler.obj generate.obj generate_x86_64.obj
 
 
