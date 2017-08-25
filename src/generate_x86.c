@@ -209,7 +209,7 @@ int generate_contains(struct _generate *generate, char *match, int len, int not)
   }
     else
   {
-    distance = -(distance + 3);
+    distance = -(distance + 6);
 
     // jnz label: 0x0f 0x85 label
     generate_code(generate, 6, 0x0f, 0x85,
