@@ -3,14 +3,14 @@
  *  Author: Michael Kohn
  *   Email: mike@mikekohn.net
  *     Web: http://www.mikekohn.net/
- * License: GPL
+ * License: GPLv3
  *
- * Copyright 2016 by Michael Kohn
+ * Copyright 2016-2019 by Michael Kohn
  *
  */
 
-#ifndef _TOKENS_H
-#define _TOKENS_H
+#ifndef EASY_MATCH_TOKENS_H
+#define EASY_MATCH_TOKENS_H
 
 #define TOKEN_NOTHING -2
 #define TOKEN_ERROR -1

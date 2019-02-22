@@ -3,14 +3,14 @@
  *  Author: Michael Kohn
  *   Email: mike@mikekohn.net
  *     Web: http://www.mikekohn.net/
- * License: GPL
+ * License: GPLv3
  *
- * Copyright 2016 by Michael Kohn
+ * Copyright 2016-2019 by Michael Kohn
  *
  */
 
-#ifndef _COMPILER_H
-#define _COMPILER_H
+#ifndef EASY_MATCH_COMPILER_H
+#define EASY_MATCH_COMPILER_H
 
 #define OPTION_NONE 0
 #define OPTION_WITH_LEN 1

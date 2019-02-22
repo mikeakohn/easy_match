@@ -3,14 +3,14 @@
  *  Author: Michael Kohn
  *   Email: mike@mikekohn.net
  *     Web: http://www.mikekohn.net/
- * License: GPL
+ * License: GPLv3
  *
- * Copyright 2016 by Michael Kohn
+ * Copyright 2016-2019 by Michael Kohn
  *
  */
 
-#ifndef _GENERATE_H
-#define _GENERATE_H
+#ifndef EASY_MATCH_GENERATE_H
+#define EASY_MATCH_GENERATE_H
 
 #include <stdint.h>
 #include <stdarg.h>
