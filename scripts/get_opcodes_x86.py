@@ -15,8 +15,10 @@ out.close()
 os.system("nasm -o /tmp/test.bin /tmp/test.asm")
 
 code = []
-fp = open("/tmp/test.bin", "r")
-for a in fp.readline():
+fp = open("/tmp/test.bin", "rb")
+while True:
+  a = fp.read(1)
+  if not a: break
   code.append("0x%02x" % ord(a))
 fp.close()
 
